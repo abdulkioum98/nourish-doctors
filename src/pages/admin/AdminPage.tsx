@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../supabaseClient';
 import { 
   Lock, LogOut, Plus, Edit3, Trash2, Save, X, Loader2, 
   Wheat, FlaskConical, BookOpen, RefreshCw, ArrowLeft, Dna 

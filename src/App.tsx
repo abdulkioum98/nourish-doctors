@@ -2,27 +2,48 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
-import EmailLogin from './components/EmailLogin'; // Ensure EmailLogin.tsx exists in src/components/
-import CattleInfoPage, { CowData } from './pages/CattleInfoPage';
-import CalculatorFattening, { FatteningCowData } from './pages/FatteningInfoPage';
-import CalculatorPage from './pages/CalculatorDairyPage';
-import CalculatorFatteningPage from './pages/CalculatorFatteningPage';
-import NourishFeedPage from './pages/NourishFeedPage';
-import FeedNutrientsPage from './pages/OtherIngredientsPage';
-import DmReferencePage from './pages/DmReferencePage';
-import AdminPage from './pages/AdminPage';
-import BreedPage from './pages/BreedPage';
+import EmailLogin from './components/EmailLogin';
+import Dashboard from './pages/dashboard/Dashboard';
+
+// Folder-based imports
+import CattleInfoPage, { CowData } from './pages/cattle/CattleInfoPage';
+import CalculatorFattening, { FatteningCowData } from './pages/cattle/FatteningInfoPage';
+import CalculatorPage from './pages/cattle/CalculatorDairyPage';
+import CalculatorFatteningPage from './pages/cattle/CalculatorFatteningPage';
+import NourishFeedPage from './pages/cattle/NourishFeedPage';
+
+import FeedNutrientsPage from './pages/references/OtherIngredientsPage';
+import DmReferencePage from './pages/references/DmReferencePage';
+import BreedPage from './pages/references/BreedPage';
+
+import AdminPage from './pages/admin/AdminPage';
 import { Loader2 } from 'lucide-react';
 
 export type CattleData = CowData | FatteningCowData;
 
-type PageType =
+export type PageType =
+  | 'home'
+  // --- Cattle Section ---
   | 'cattle-info'
   | 'calculator-fattening'
   | 'calculator'
   | 'fatteningcalculator'
+  | 'weight-measure'
   | 'nourish-feeds'
   | 'nourish-feeds-reference'
+  // --- Poultry Section ---
+  | 'layer-light'
+  | 'poultry-space'
+  | 'poultry-uniformity'
+  | 'layer-feeds'
+  | 'broiler-feeds'
+  | 'sonali-feeds'
+  | 'layer-standard'
+  | 'broiler-standard'
+  | 'sonali-standard'
+  // --- Fish Section ---
+  | 'fish-feed'
+  // --- References & Admin ---
   | 'price-list'
   | 'feed-nutrients'
   | 'other-ingredients-reference'
@@ -44,7 +65,7 @@ export default function App() {
         return 'admin';
       }
     }
-    return 'cattle-info';
+    return 'home'; // App-e dhukar sathei Dashboard ashbe
   });
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
@@ -76,7 +97,7 @@ export default function App() {
         setCurrentPage('admin');
       } else if (path === '/' || path === '') {
         if (currentPage === 'admin') {
-          setCurrentPage('cattle-info');
+          setCurrentPage('home');
         }
       }
     };
@@ -139,7 +160,7 @@ export default function App() {
           if (window.location.pathname !== '/') {
             window.history.pushState({}, '', '/');
           }
-          setCurrentPage('cattle-info');
+          setCurrentPage('home');
         }}
         onGoCalculator={() => {
           if (window.location.pathname !== '/') {
@@ -165,6 +186,11 @@ export default function App() {
       <main className={`p-3 sm:p-5 mx-auto transition-all duration-300 ${
         isFormPage ? 'max-w-2xl' : 'w-full max-w-6xl'
       }`}>
+
+        {/* HOME / DASHBOARD PAGE */}
+        {currentPage === 'home' && (
+          <Dashboard onSelectPage={(pageId) => setCurrentPage(pageId as PageType)} />
+        )}
 
         {/* MAIN TOGGLE (Dairy vs Fattening) */}
         {isFormPage && (

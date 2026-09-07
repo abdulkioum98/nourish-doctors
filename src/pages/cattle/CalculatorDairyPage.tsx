@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../supabaseClient';
 import { Loader2, AlertCircle, Edit3, CheckCircle2 } from 'lucide-react';
 import { CowData } from './CattleInfoPage';
 

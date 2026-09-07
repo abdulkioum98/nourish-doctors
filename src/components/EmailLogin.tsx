@@ -13,7 +13,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // ✅ ১. OTP পাঠানো (ONLY OTP, no magic link)
+  // ✅ Send OTP
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -22,7 +22,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
     const formattedEmail = email.trim().toLowerCase();
 
     try {
-      // ✅ whitelist check
+      // ১. Whitelist Check
       const { data: allowed, error: dbError } = await supabase
         .from('allowed_emails')
         .select('email')
@@ -41,36 +41,19 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
         return;
       }
 
-      // 🔥 FIX: always OTP, no magic link
+      // ২. Send OTP with dynamic signup allowed
       const { error } = await supabase.auth.signInWithOtp({
         email: formattedEmail,
         options: {
-          shouldCreateUser: false, // ❗ magic link বন্ধ
-        }
+          shouldCreateUser: true, // ✅ নতুন অথবা পুরাতন দুই ইউজারের জন্যই OTP নিশ্চিত করবে
+        },
       });
 
       if (error) {
-        // 👉 user না থাকলে auto create + retry
-        if (error.message.includes('User not found')) {
-          const { error: createError } = await supabase.auth.signInWithOtp({
-            email: formattedEmail,
-            options: {
-              shouldCreateUser: true,
-            }
-          });
-
-          if (createError) {
-            setErrorMsg(createError.message);
-          } else {
-            setStep('otp');
-          }
-        } else {
-          setErrorMsg(error.message);
-        }
+        setErrorMsg(error.message);
       } else {
         setStep('otp');
       }
-
     } catch (err) {
       setErrorMsg('Something went wrong!');
     } finally {
@@ -78,7 +61,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
     }
   };
 
-  // ✅ ২. OTP verify
+  // ✅ Verify OTP
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -109,7 +92,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
           <p className="text-slate-500 text-[11px]">
             {step === 'email'
               ? 'Enter your authorized email address'
-              : `Enter 6-digit code sent to ${email}`}
+              : `Enter 8-digit code sent to ${email}`}
           </p>
         </div>
 
@@ -141,7 +124,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-lg transition flex items-center justify-center space-x-1"
+              className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-lg transition flex items-center justify-center space-x-1 disabled:opacity-50"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={16} />
@@ -164,7 +147,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
                   maxLength={8}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="Enter OTP"
+                  placeholder="Your 8-digit OTP"
                   className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-700 font-bold tracking-widest text-center text-slate-800"
                 />
               </div>
@@ -173,7 +156,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-lg transition flex items-center justify-center space-x-1"
+              className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-lg transition flex items-center justify-center space-x-1 disabled:opacity-50"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={16} />
@@ -184,7 +167,10 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
 
             <button
               type="button"
-              onClick={() => setStep('email')}
+              onClick={() => {
+                setStep('email');
+                setErrorMsg('');
+              }}
               className="w-full text-slate-500 hover:underline text-[11px] text-center block pt-1"
             >
               Change Email Address
