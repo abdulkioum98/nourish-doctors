@@ -48,7 +48,7 @@ export type PageType =
   | 'feed-nutrients'
   | 'other-ingredients-reference'
   | 'dm-reference'
-  | 'dm-ration-reference'
+  | 'dm-ratio-reference'
   | 'breed-reference'
   | 'admin';
 
@@ -268,8 +268,8 @@ export default function App() {
           <FeedNutrientsPage onBack={handleBackToCalculator} />
         )}
 
-        {/* DM RATION REFERENCE PAGE */}
-        {(currentPage === 'dm-reference' || currentPage === 'dm-ration-reference') && (
+        {/* DM RATIO REFERENCE PAGE */}
+        {(currentPage === 'dm-reference' || currentPage === 'dm-ratio-reference') && (
           <DmReferencePage onBack={handleBackToCalculator} />
         )}
 

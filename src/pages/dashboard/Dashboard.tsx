@@ -2,16 +2,13 @@ import React from 'react';
 import { 
   Calculator, 
   Wheat, 
-  Layers, 
-  BookOpen, 
-  Dna, 
-  Egg, 
-  Fish, 
   Scale, 
+  Sparkles, 
   Ruler, 
   BarChart3, 
-  ArrowRight,
-  Sparkles
+  Egg, 
+  Fish, 
+  ChevronRight 
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -19,287 +16,189 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ onSelectPage }: DashboardProps) {
-  // Cattle Section Items
+  // Cattle Tools
   const cattleServices = [
-    {
-      id: 'cattle-info',
-      title: 'Cattle Ration Calculator',
-      description: 'Calculate DM, ME, & CP requirements for Dairy and Fattening cattle.',
-      icon: <Calculator className="text-emerald-600" size={24} />,
-      badge: 'Active',
-      active: true,
-    },
-    {
-      id: 'nourish-feeds-reference',
-      title: 'Nourish Feeds',
-      description: 'Nutritional profiles and specifications of Nourish commercial feeds.',
-      icon: <Wheat className="text-amber-600" size={24} />,
-      badge: 'Active',
-      active: true,
-    },
-    {
-      id: 'weight-measure',
-      title: 'Weight Estimator',
-      description: 'Estimate live body weight using heart girth and length measurements.',
-      icon: <Scale className="text-blue-600" size={24} />,
-      badge: 'Coming Soon',
-      active: false,
-    },
+    { id: 'cattle-info', title: 'Cattle Ration Calculator', icon: <Calculator className="text-emerald-700" size={20} />, active: true },
+    { id: 'nourish-feeds-reference', title: 'Nourish Cattle Feeds', icon: <Wheat className="text-emerald-700" size={20} />, active: true },
+    { id: 'weight-measure', title: 'Live Weight Estimator', icon: <Scale className="text-emerald-700" size={20} />, active: false },
   ];
 
-  // Poultry Section Items
+  // Poultry Tools
   const poultryServices = [
-    {
-      id: 'layer-light',
-      title: 'Layer Lighting Schedule',
-      description: 'Light duration and intensity guide according to bird age.',
-      icon: <Sparkles className="text-amber-500" size={24} />,
-      badge: 'Coming Soon',
-      active: false,
-    },
-    {
-      id: 'poultry-space',
-      title: 'Space & Equipment Calcs',
-      description: 'Floor, feeder, and drinker space requirements for birds.',
-      icon: <Ruler className="text-indigo-600" size={24} />,
-      badge: 'Coming Soon',
-      active: false,
-    },
-    {
-      id: 'poultry-uniformity',
-      title: 'Flock Uniformity',
-      description: 'Calculate flock uniformity % and body weight variation.',
-      icon: <BarChart3 className="text-violet-600" size={24} />,
-      badge: 'Coming Soon',
-      active: false,
-    },
-    {
-      id: 'layer-feeds',
-      title: 'Layer & Broiler Feeds',
-      description: 'Feed specs for Layer, Broiler, and Sonali commercial breeds.',
-      icon: <Egg className="text-orange-500" size={24} />,
-      badge: 'Coming Soon',
-      active: false,
-    },
+    { id: 'layer-light', title: 'Layer Lighting Schedule', icon: <Sparkles className="text-amber-700" size={20} />, active: false },
+    { id: 'poultry-space', title: 'Space & Equipment Calcs', icon: <Ruler className="text-amber-700" size={20} />, active: false },
+    { id: 'poultry-uniformity', title: 'Flock Uniformity Index', icon: <BarChart3 className="text-amber-700" size={20} />, active: false },
+    { id: 'layer-feeds', title: 'Commercial Poultry Feeds', icon: <Egg className="text-amber-700" size={20} />, active: false },
   ];
 
-  // Fish Section Items
+  // Aqua Tools
   const fishServices = [
-    {
-      id: 'fish-feed',
-      title: 'Aqua Feed Requirements',
-      description: 'Daily feeding rate based on body weight and fish biomass.',
-      icon: <Fish className="text-cyan-600" size={24} />,
-      badge: 'Coming Soon',
-      active: false,
-    },
-  ];
-
-  // Reference Items
-  const referenceData = [
-    {
-      id: 'other-ingredients-reference',
-      title: 'Other Feed Ingredients',
-      description: 'Nutrient data of green grass, straw, and raw materials.',
-      icon: <Layers className="text-emerald-700" size={20} />,
-      active: true,
-    },
-    {
-      id: 'dm-ration-reference',
-      title: 'DM Ration Standards',
-      description: 'Standard Dry Matter intake recommendations for cattle.',
-      icon: <BookOpen className="text-blue-700" size={20} />,
-      active: true,
-    },
-    {
-      id: 'breed-reference',
-      title: 'Cattle Breeds',
-      description: 'Physical traits and production standards of dairy breeds.',
-      icon: <Dna className="text-purple-700" size={20} />,
-      active: true,
-    },
+    { id: 'fish-feed', title: 'Aqua Feed Requirements', icon: <Fish className="text-cyan-700" size={20} />, active: false },
   ];
 
   return (
-    <div className="space-y-8 pb-10">
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-emerald-800 to-teal-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
-            Livestock & Poultry Decision Support System
+    <div className="min-h-screen py-6 px-4 flex flex-col items-center">
+      {/* Max Width Container to keeps everything perfectly centered */}
+      <div className="w-full max-w-md space-y-8">
+        
+        {/* Main Title */}
+        <div className="text-center pb-2 border-b-2 border-emerald-800/20">
+          <h1 className="text-3xl font-black tracking-tight text-emerald-900">
+            Nourish-Doctors
           </h1>
-          <p className="text-emerald-100 text-sm sm:text-base leading-relaxed">
-            Welcome! Select a tool or reference module below to calculate precise feed rations, estimate requirements, and optimize animal nutrition.
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">
+            Decision Support & Advisory System
           </p>
         </div>
-        <div className="absolute right-0 bottom-0 translate-x-10 translate-y-10 opacity-10 pointer-events-none">
-          <Calculator size={300} />
-        </div>
-      </div>
 
-      {/* 1. CATTLE SECTION */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span className="w-2.5 h-6 bg-emerald-600 rounded-full inline-block"></span>
-            Cattle Nutrition & Tools
-          </h2>
-        </div>
+        {/* 1. CATTLE SECTION */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-center space-x-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-900">
+              Cattle Tools
+            </h2>
+            <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cattleServices.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => item.active && onSelectPage(item.id)}
-              className={`p-5 rounded-xl border bg-white transition-all duration-200 flex flex-col justify-between ${
-                item.active
-                  ? 'border-slate-200 hover:border-emerald-500 hover:shadow-md cursor-pointer group'
-                  : 'border-slate-100 opacity-60 cursor-not-allowed'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="p-2.5 bg-slate-50 rounded-lg group-hover:bg-emerald-50 transition">
+          <div className="flex flex-col space-y-2.5">
+            {cattleServices.map((item) => (
+              <button
+                key={item.id}
+                disabled={!item.active}
+                onClick={() => item.active && onSelectPage(item.id)}
+                className={`w-full p-3.5 rounded-xl border flex items-center justify-between transition-all duration-200 ${
+                  item.active
+                    ? 'bg-gradient-to-r from-emerald-50/80 to-teal-50/50 border-emerald-200/80 shadow-sm hover:shadow-md hover:border-emerald-500 cursor-pointer group'
+                    : 'bg-slate-50/70 border-slate-200/60 opacity-55 cursor-not-allowed'
+                }`}
+              >
+                <div className="flex items-center space-x-3.5">
+                  <div className={`p-2 rounded-lg transition-colors ${
+                    item.active ? 'bg-white shadow-xs group-hover:bg-emerald-100' : 'bg-slate-200/50'
+                  }`}>
                     {item.icon}
                   </div>
-                  <span
-                    className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                      item.active
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    {item.badge}
+                  <span className={`font-bold text-xs sm:text-sm transition-colors ${
+                    item.active ? 'text-slate-800 group-hover:text-emerald-900' : 'text-slate-500'
+                  }`}>
+                    {item.title}
                   </span>
                 </div>
-                <h3 className="font-bold text-slate-800 mb-1 text-base group-hover:text-emerald-700 transition">
-                  {item.title}
-                </h3>
-                <p className="text-slate-500 text-xs leading-relaxed">
-                  {item.description}
-                </p>
-              </div>
 
-              {item.active && (
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center text-xs font-bold text-emerald-700 group-hover:translate-x-1 transition-transform">
-                  <span>Open Tool</span>
-                  <ArrowRight size={14} className="ml-1" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
+                {item.active ? (
+                  <div className="bg-white/80 p-1 rounded-full text-emerald-700 group-hover:bg-emerald-700 group-hover:text-white transition-all shadow-xs">
+                    <ChevronRight size={16} />
+                  </div>
+                ) : (
+                  <span className="text-[10px] bg-slate-200 text-slate-600 font-semibold px-2 py-0.5 rounded-md">
+                    Soon
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
 
-      {/* 2. POULTRY SECTION */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span className="w-2.5 h-6 bg-amber-500 rounded-full inline-block"></span>
-            Poultry Management
-          </h2>
-        </div>
+        {/* 2. POULTRY SECTION */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-center space-x-2">
+            <span className="h-2 w-2 rounded-full bg-amber-500"></span>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-900">
+              Poultry Tools
+            </h2>
+            <span className="h-2 w-2 rounded-full bg-amber-500"></span>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {poultryServices.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => item.active && onSelectPage(item.id)}
-              className={`p-4 rounded-xl border bg-white transition-all duration-200 flex flex-col justify-between ${
-                item.active
-                  ? 'border-slate-200 hover:border-amber-500 hover:shadow-md cursor-pointer group'
-                  : 'border-slate-100 opacity-60 cursor-not-allowed'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-slate-50 rounded-lg">{item.icon}</div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">
-                    {item.badge}
+          <div className="flex flex-col space-y-2.5">
+            {poultryServices.map((item) => (
+              <button
+                key={item.id}
+                disabled={!item.active}
+                onClick={() => item.active && onSelectPage(item.id)}
+                className={`w-full p-3.5 rounded-xl border flex items-center justify-between transition-all duration-200 ${
+                  item.active
+                    ? 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm hover:shadow-md hover:border-amber-500 cursor-pointer group'
+                    : 'bg-slate-50/70 border-slate-200/60 opacity-55 cursor-not-allowed'
+                }`}
+              >
+                <div className="flex items-center space-x-3.5">
+                  <div className={`p-2 rounded-lg transition-colors ${
+                    item.active ? 'bg-white shadow-xs group-hover:bg-amber-100' : 'bg-slate-200/50'
+                  }`}>
+                    {item.icon}
+                  </div>
+                  <span className={`font-bold text-xs sm:text-sm transition-colors ${
+                    item.active ? 'text-slate-800 group-hover:text-amber-900' : 'text-slate-500'
+                  }`}>
+                    {item.title}
                   </span>
                 </div>
-                <h3 className="font-bold text-slate-800 mb-1 text-sm">
-                  {item.title}
-                </h3>
-                <p className="text-slate-500 text-xs leading-relaxed">
-                  {item.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
-      {/* 3. FISH SECTION */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span className="w-2.5 h-6 bg-cyan-600 rounded-full inline-block"></span>
-            Aqua / Fish Nutrition
-          </h2>
-        </div>
+                {item.active ? (
+                  <div className="bg-white/80 p-1 rounded-full text-amber-700 group-hover:bg-amber-700 group-hover:text-white transition-all shadow-xs">
+                    <ChevronRight size={16} />
+                  </div>
+                ) : (
+                  <span className="text-[10px] bg-slate-200 text-slate-600 font-semibold px-2 py-0.5 rounded-md">
+                    Soon
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {fishServices.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => item.active && onSelectPage(item.id)}
-              className={`p-4 rounded-xl border bg-white transition-all duration-200 flex flex-col justify-between ${
-                item.active
-                  ? 'border-slate-200 hover:border-cyan-500 hover:shadow-md cursor-pointer group'
-                  : 'border-slate-100 opacity-60 cursor-not-allowed'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-slate-50 rounded-lg">{item.icon}</div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">
-                    {item.badge}
+        {/* 3. FISH / AQUA SECTION */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-center space-x-2">
+            <span className="h-2 w-2 rounded-full bg-cyan-600"></span>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-900">
+              Aqua Tools
+            </h2>
+            <span className="h-2 w-2 rounded-full bg-cyan-600"></span>
+          </div>
+
+          <div className="flex flex-col space-y-2.5">
+            {fishServices.map((item) => (
+              <button
+                key={item.id}
+                disabled={!item.active}
+                onClick={() => item.active && onSelectPage(item.id)}
+                className={`w-full p-3.5 rounded-xl border flex items-center justify-between transition-all duration-200 ${
+                  item.active
+                    ? 'bg-gradient-to-r from-cyan-50/80 to-sky-50/50 border-cyan-200/80 shadow-sm hover:shadow-md hover:border-cyan-500 cursor-pointer group'
+                    : 'bg-slate-50/70 border-slate-200/60 opacity-55 cursor-not-allowed'
+                }`}
+              >
+                <div className="flex items-center space-x-3.5">
+                  <div className={`p-2 rounded-lg transition-colors ${
+                    item.active ? 'bg-white shadow-xs group-hover:bg-cyan-100' : 'bg-slate-200/50'
+                  }`}>
+                    {item.icon}
+                  </div>
+                  <span className={`font-bold text-xs sm:text-sm transition-colors ${
+                    item.active ? 'text-slate-800 group-hover:text-cyan-900' : 'text-slate-500'
+                  }`}>
+                    {item.title}
                   </span>
                 </div>
-                <h3 className="font-bold text-slate-800 mb-1 text-sm">
-                  {item.title}
-                </h3>
-                <p className="text-slate-500 text-xs leading-relaxed">
-                  {item.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
-      {/* 4. REFERENCE DATA SECTION */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span className="w-2.5 h-6 bg-slate-600 rounded-full inline-block"></span>
-            Reference Database
-          </h2>
-        </div>
+                {item.active ? (
+                  <div className="bg-white/80 p-1 rounded-full text-cyan-700 group-hover:bg-cyan-700 group-hover:text-white transition-all shadow-xs">
+                    <ChevronRight size={16} />
+                  </div>
+                ) : (
+                  <span className="text-[10px] bg-slate-200 text-slate-600 font-semibold px-2 py-0.5 rounded-md">
+                    Soon
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {referenceData.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => onSelectPage(item.id)}
-              className="p-4 rounded-xl border border-slate-200 bg-white hover:border-emerald-500 hover:shadow-md cursor-pointer transition group flex items-start space-x-3"
-            >
-              <div className="p-2.5 bg-slate-50 rounded-lg group-hover:bg-emerald-50 transition shrink-0">
-                {item.icon}
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm mb-0.5 group-hover:text-emerald-700 transition">
-                  {item.title}
-                </h3>
-                <p className="text-slate-500 text-xs leading-relaxed">
-                  {item.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      </div>
     </div>
   );
 }
