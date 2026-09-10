@@ -13,9 +13,9 @@ const PAGE_TITLES: Record<string, string> = {
   'cattle-info': 'Cattle Ration Calculator',
   'nourish-feeds-reference': 'Nourish Feeds Reference',
   'weight-measure': 'Live Weight Estimator',
-  'layer-light': 'Layer Lighting Schedule',
+  'layer-light': 'Layer Lighting',
   'poultry-space': 'Space & Equipment Calcs',
-  'poultry-uniformity': 'Flock Uniformity Index',
+  'poultry-uniformity': 'Uniformity Calculator',
   'layer-feeds': 'Commercial Poultry Feeds',
   'fish-feed': 'Aqua Feed Requirements',
 };
@@ -56,7 +56,7 @@ export default function Navbar({ onOpenSidebar, onGoHome, onGoBack, currentPage 
           </h1>
         </div>
 
-        {/* Home Button (Title-এর পাশে বামেই রাখা হয়েছে) */}
+        {/* Home Button*/}
         {!isHomePage && (
           <button 
             onClick={onGoHome} 

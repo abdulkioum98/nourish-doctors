@@ -18,6 +18,9 @@ import FeedNutrientsPage from './pages/references/OtherIngredientsPage';
 import DmReferencePage from './pages/references/DmReferencePage';
 import BreedPage from './pages/references/BreedPage';
 
+import LayerLightCalculator from './pages/poultry/LayerLightCalculator';
+import PoultryUniformityCalculator from './pages/poultry/PoultryUniformityCalculator';
+
 import AdminPage from './pages/admin/AdminPage';
 import { Loader2 } from 'lucide-react';
 
@@ -333,6 +336,16 @@ export default function App() {
         {/* WEIGHT ESTIMATOR PAGE */}
           {currentPage === 'weight-measure' && (
             <WeightEstimatorPage onBack={handleBackToCalculator} />
+          )}
+
+          {/* LAYER LIGHT CALCULATOR PAGE */}
+        {currentPage === 'layer-light' && (
+          <LayerLightCalculator />
+        )}
+
+        {/* FLOCK UNIFORMITY CALCULATOR PAGE */}
+          {currentPage === 'poultry-uniformity' && (
+            <PoultryUniformityCalculator />
           )}
 
       </main>
