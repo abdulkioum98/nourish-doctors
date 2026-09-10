@@ -1,6 +1,13 @@
 import React from 'react';
 import { supabase } from '../supabaseClient';
-import { X, Tag, FlaskConical, BookOpen, Wheat, Calculator, Layers, Dna, LogOut, Mail } from 'lucide-react';
+import {
+  X,
+  LogOut,
+  Mail,
+  Home,
+  ShieldAlert,
+  UserCheck
+} from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -10,14 +17,13 @@ interface SidebarProps {
   userEmail?: string;
 }
 
-export default function Sidebar({ isOpen, onClose, onNavigate, activeId = 'calculator', userEmail }: SidebarProps) {
-  const menuItems = [
-    { id: 'calculator', label: 'Calculator', icon: <Calculator size={18} /> },
-    { id: 'nourish-feeds-reference', label: 'Nourish Feeds', icon: <Wheat size={18} /> },
-    { id: 'other-ingredients-reference', label: 'Other Ingredients', icon: <Layers size={18} /> },
-    { id: 'dm-ration-reference', label: 'DM Ratio', icon: <BookOpen size={18} /> },
-    { id: 'breed-reference', label: 'Breeds', icon: <Dna size={18} /> },
-  ];
+export default function Sidebar({
+  isOpen,
+  onClose,
+  onNavigate,
+  activeId = 'home',
+  userEmail
+}: SidebarProps) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -26,65 +32,95 @@ export default function Sidebar({ isOpen, onClose, onNavigate, activeId = 'calcu
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex">
+    <div className="fixed inset-0 z-50 flex">
       {/* Background Overlay */}
-      <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+        onClick={onClose} 
+      />
 
-      {/* Sidebar Content */}
-      <div className="relative w-64 bg-white h-full shadow-xl z-50 flex flex-col justify-between">
+      {/* Sidebar Main Content */}
+      <div className="relative w-70 max-w-[80vw] bg-white h-full shadow-2xl z-50 flex flex-col justify-between overflow-y-auto">
         <div>
-          <div className="bg-emerald-800 text-white p-4 flex justify-between items-center">
-            <h2 className="font-bold text-lg">Menu & Reference</h2>
-            <button onClick={onClose} className="p-1 hover:bg-emerald-700 rounded transition">
+          {/* Header */}
+          <div className="bg-emerald-800 text-white p-4 flex justify-between items-center sticky top-0 z-10">
+            <div>
+              <h2 className="font-bold text-base sm:text-lg leading-tight">Main Navigation</h2>
+              <p className="text-[11px] text-emerald-200">Nourish Feeds & Tools</p>
+            </div>
+            <button 
+              onClick={onClose} 
+              className="p-1.5 hover:bg-emerald-700/80 rounded-lg transition-colors text-white/90"
+              aria-label="Close Sidebar"
+            >
               <X size={20} />
             </button>
           </div>
 
+          {/* Navigation Items  */}
           <nav className="p-3 space-y-1">
-            {menuItems.map((item) => {
-              const isActive = activeId === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onNavigate(item.id, item.label);
-                    onClose();
-                  }}
-                  className={`w-full text-left py-2.5 px-3 rounded-lg text-gray-700 font-medium flex items-center space-x-3 transition ${
-                    isActive
-                      ? 'bg-emerald-50 text-emerald-800 font-bold border-l-4 border-emerald-600'
-                      : 'hover:bg-slate-50'
-                  }`}
-                >
-                  <span className={isActive ? 'text-emerald-700' : 'text-emerald-600'}>{item.icon}</span>
-                  <span className="text-sm">{item.label}</span>
-                </button>
-              );
-            })}
+            <button
+              onClick={() => {
+                onNavigate('home', 'Dashboard');
+                onClose();
+              }}
+              className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all duration-150 ${
+                activeId === 'home' || activeId === 'dashboard'
+                  ? 'bg-emerald-50 text-emerald-800 font-bold shadow-xs border-l-4 border-emerald-600'
+                  : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <Home size={18} className="text-emerald-700" />
+              <span>Dashboard</span>
+            </button>
+
+            {/* Admin Portal Option */}
+            {activeId === 'admin' && (
+              <button
+                onClick={() => {
+                  onNavigate('admin', 'Admin Portal');
+                  onClose();
+                }}
+                className="w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center space-x-3 bg-emerald-50 text-emerald-800 font-bold shadow-xs border-l-4 border-emerald-600"
+              >
+                <ShieldAlert size={18} className="text-emerald-700" />
+                <span>Admin Portal</span>
+              </button>
+            )}
+
+            {/* Informational Message */}
+            <div className="pt-6 px-3">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-slate-500 text-xs text-center leading-relaxed">
+                Select a specific module (Cattle, Poultry, Aqua)
+              </div>
+            </div>
           </nav>
         </div>
 
-        {/* User Info and Logout Section */}
-        <div className="p-4 border-t bg-slate-50 space-y-3">
+        {/* Bottom Profile & Logout Footer */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-3 sticky bottom-0">
           {userEmail && (
-            <div className="flex items-center space-x-2 text-slate-600 text-xs overflow-hidden">
-              <Mail size={14} className="text-emerald-700 shrink-0" />
-              <span className="font-medium truncate text-[11px]" title={userEmail}>
-                {userEmail}
-              </span>
+            <div className="flex items-center space-x-2.5 text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-xs">
+              <Mail size={16} className="text-emerald-600 shrink-0" />
+              <div className="overflow-hidden">
+                <p className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Logged In As</p>
+                <span className="font-semibold truncate text-xs text-slate-700 block mt-0.5" title={userEmail}>
+                  {userEmail}
+                </span>
+              </div>
             </div>
           )}
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center space-x-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2 px-3 rounded-lg text-xs font-semibold transition"
+            className="w-full flex items-center justify-center space-x-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 py-2.5 px-3 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.99]"
           >
-            <LogOut size={14} />
-            <span>Logout</span>
+            <LogOut size={15} />
+            <span>Sign Out</span>
           </button>
 
-          <div className="text-[10px] text-gray-400 text-center pt-1">
-            Cattle Ration Calculator v1.0
+          <div className="text-[10px] text-slate-400 text-center font-medium">
+            Nourish-Doctors v2.0
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { Loader2, AlertCircle, Edit3, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, Edit3, CheckCircle2, Download, Copy, X, Check } from 'lucide-react';
 import { CowData } from './CattleInfoPage';
 
 interface FeedItem {
@@ -22,6 +22,10 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
   const [loading, setLoading] = useState<boolean>(true);
   const [itemList, setItemList] = useState<FeedItem[]>([]);
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
+  
+  // Modal & Copy State
+  const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
     fetchCalculatorData();
@@ -49,7 +53,7 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
         id: `nourish_${item.id}`,
         name: item.name,
         price_per_kg: parseFloat(item.price) || 0,
-        feed_type: 'concentrate', // nourish feeds under dairy are concentrates
+        feed_type: 'concentrate',
         dm_percent: parseFloat(item.dm) || 0,
         cp_percent: parseFloat(item.cp) || 0,
         me_energy: parseFloat(item.me) || 0,
@@ -160,21 +164,87 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
 
   const concentrateDiff = actualConcentrateRatioPct - targetConcentratePct;
 
-  // Differences Calculations
   const dmDiff = totalActualDM - dmReq;
   const cpDiff = totalActualCP - cpReq;
   const energyDiff = totalActualEnergy - energyReq;
 
-  // Percentage Deviation Helper (10% threshold)
   const dmDevPct = dmReq > 0 ? Math.abs(dmDiff / dmReq) : 0;
   const cpDevPct = cpReq > 0 ? Math.abs(cpDiff / cpReq) : 0;
   const energyDevPct = energyReq > 0 ? Math.abs(energyDiff / energyReq) : 0;
 
-  // Check all parameters that need adjustment (> 10% deviation)
   const offParameters: { name: string; key: 'dm' | 'cp' | 'energy' }[] = [];
   if (dmDevPct > 0.10) offParameters.push({ name: 'DM', key: 'dm' });
   if (cpDevPct > 0.10) offParameters.push({ name: 'CP', key: 'cp' });
   if (energyDevPct > 0.10) offParameters.push({ name: 'Energy', key: 'energy' });
+
+  // Selected Items Filter
+  const selectedConcentrates = concentrates.filter(item => (quantities[item.id] || 0) > 0);
+  const selectedFodders = fodders.filter(item => (quantities[item.id] || 0) > 0);
+
+  // Generate Text Content for Copy & PDF Preview
+  const generateFormattedText = () => {
+    let text = `=======================================\n`;
+    text += `       NOURISH POULTRY & HATCHERY LTD.\n`;
+    text += `             Ration Formulation\n`;
+    text += `=======================================\n\n`;
+
+    text += `--- DAIRY INFORMATION ---\n`;
+    text += `• Cow Type: ${cowType.toUpperCase()}\n`;
+    text += `• Stage: ${stageName}\n`;
+    text += `• Body Weight: ${bodyWeight} kg\n`;
+    if (breedType) text += `• Breed: ${breedType}\n`;
+    if (ageMonths) text += `• Age: ${ageMonths} months\n`;
+    if (cowType === 'lactating') {
+      text += `• Milk Yield: ${milkYield} L\n`;
+      text += `• Lactation No: ${cowData?.lactationNo || '-'}\n`;
+      text += `• Lactation Age: ${ageLactationMonths} months\n`;
+    }
+    if (nourishFeedName) text += `• Selected Feed: ${nourishFeedName}\n`;
+
+    text += `\n--- NUTRIENT REQUIREMENTS`;
+    text += `• DM Required: ${dmReq.toFixed(3)} kg `;
+    text += `• CP Required: ${cpReq.toFixed(3)} kg `;
+    text += `• Energy Required: ${energyReq.toFixed(1)} MJ`;
+    text += `• Total Daily Cost: ৳${totalCost.toFixed(0)}\n`;
+
+    text += `\n--- FEED RATION BREAKDOWN ---\n`;
+    
+    text += `\n[ CONCENTRATE ]\n`;
+    if (selectedConcentrates.length > 0) {
+      selectedConcentrates.forEach(item => {
+        const qty = quantities[item.id];
+        const cost = qty * item.price_per_kg;
+        text += `• ${item.name}: ${qty} kg (@ ৳${item.price_per_kg}/kg = ৳${cost.toFixed(0)})\n`;
+      });
+    } else {
+      text += `  No concentrate items selected.\n`;
+    }
+
+    text += `\n[ FODDER ]\n`;
+    if (selectedFodders.length > 0) {
+      selectedFodders.forEach(item => {
+        const qty = quantities[item.id];
+        const cost = qty * item.price_per_kg;
+        text += `• ${item.name}: ${qty} kg (@ ৳${item.price_per_kg}/kg = ৳${cost.toFixed(0)})\n`;
+      });
+    } else {
+      text += `  No fodder items selected.\n`;
+    }
+
+    text += `\n=======================================\n`;
+    return text;
+  };
+
+  const handleCopyText = () => {
+    const text = generateFormattedText();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadPDF = () => {
+    window.print();
+  };
 
   if (loading) {
     return (
@@ -187,6 +257,30 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
   return (
     <div className="w-full space-y-4 sm:space-y-6">
       
+      {/* CSS PRINT STYLES FOR HIGH QUALITY PDF PRINTING */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #printable-pdf-area, #printable-pdf-area * {
+            visibility: visible;
+          }
+          #printable-pdf-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            color: black;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       {/* BANNER */}
       <div className="bg-emerald-50/60 rounded-xl p-3.5 sm:p-4 shadow-xs border border-emerald-200/80 flex justify-between items-center gap-3">
         <div className="space-y-1.5 min-w-0">
@@ -404,92 +498,113 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
           </div>
         </div>
 
-        {/* Right Calculation Table */}
-        <div className="flex-[40] min-w-0 bg-white rounded-lg shadow-xs border border-slate-200 overflow-hidden">
-          <div className="bg-slate-800 text-white p-2 font-semibold text-xs sm:text-sm md:text-base">
-            Calculation
+        {/* Right Calculation Table & Export Buttons */}
+        <div className="flex-[40] min-w-0 flex flex-col gap-2">
+          <div className="bg-white rounded-lg shadow-xs border border-slate-200 overflow-hidden">
+            <div className="bg-slate-800 text-white p-2 font-semibold text-xs sm:text-sm md:text-base">
+              Calculation
+            </div>
+
+            <div className="w-full">
+              <table className="w-full text-[9px] sm:text-xs md:text-sm text-left border-collapse table-fixed">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 font-bold">
+                    <th className="p-1 sm:p-2 border">Parameters</th>
+                    <th className="p-1 sm:p-2 border text-center w-10 sm:w-16">Qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="bg-sky-50 font-extrabold text-emerald-950 text-[8px] sm:text-[10px] md:text-xs border-b border-emerald-200">
+                    <td colSpan={2} className="p-1 sm:p-1.5 border">Dry Matter (DM)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">DM Required (kg)</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50">{dmReq.toFixed(3)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">DM Actual (kg)</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50 text-emerald-700">{totalActualDM.toFixed(3)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">DM Difference (kg)</td>
+                    <td className={`p-1 sm:p-1.5 border text-center font-bold bg-slate-50 ${dmDiff < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                      {dmDiff.toFixed(3)}
+                    </td>
+                  </tr>
+
+                  <tr className="bg-blue-100 font-bold text-blue-900 text-[8px] sm:text-[10px] md:text-xs">
+                    <td colSpan={2} className="p-0.5 sm:p-1 border">Crude Protein (CP)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">CP Required (kg)</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50">{cpReq.toFixed(3)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">CP Actual (kg)</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50 text-blue-700">{totalActualCP.toFixed(3)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">CP Difference (kg)</td>
+                    <td className={`p-1 sm:p-1.5 border text-center font-bold bg-slate-50 ${cpDiff < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                      {cpDiff.toFixed(3)}
+                    </td>
+                  </tr>
+
+                  <tr className="bg-purple-100 font-bold text-purple-900 text-[8px] sm:text-[10px] md:text-xs">
+                    <td colSpan={2} className="p-0.5 sm:p-1 border">Energy (MJ)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Energy Required (MJ)</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50">{energyReq.toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Energy Actual (MJ)</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50 text-purple-700">{totalActualEnergy.toFixed(1)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Energy Difference (MJ)</td>
+                    <td className={`p-1 sm:p-1.5 border text-center font-bold bg-slate-50 ${energyDiff < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                      {energyDiff.toFixed(1)}
+                    </td>
+                  </tr>
+
+                  <tr className="bg-amber-100 font-bold text-amber-900 text-[8px] sm:text-[10px] md:text-xs">
+                    <td colSpan={2} className="p-0.5 sm:p-1 border">Cost Breakdown</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Concentrate Cost</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-medium bg-slate-50">৳{costConcentrate.toFixed(0)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Fodder Cost</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-medium bg-slate-50">৳{costFodder.toFixed(0)}</td>
+                  </tr>
+                  <tr className="font-bold bg-slate-100">
+                    <td className="p-1 sm:p-1.5 border text-slate-900 break-words leading-tight">Total Cost</td>
+                    <td className="p-1 sm:p-1.5 border text-center font-bold bg-amber-200 text-amber-900">৳{totalCost.toFixed(0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="w-full">
-            <table className="w-full text-[9px] sm:text-xs md:text-sm text-left border-collapse table-fixed">
-              <thead>
-                <tr className="bg-slate-100 text-slate-700 font-bold">
-                  <th className="p-1 sm:p-2 border">Parameters</th>
-                  <th className="p-1 sm:p-2 border text-center w-10 sm:w-16">Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="bg-sky-50 font-extrabold text-emerald-950 text-[8px] sm:text-[10px] md:text-xs border-b border-emerald-200">
-                  <td colSpan={2} className="p-1 sm:p-1.5 border">Dry Matter (DM)</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">DM Required (kg)</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50">{dmReq.toFixed(3)}</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">DM Actual (kg)</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50 text-emerald-700">{totalActualDM.toFixed(3)}</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">DM Difference (kg)</td>
-                  <td className={`p-1 sm:p-1.5 border text-center font-bold bg-slate-50 ${dmDiff < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                    {dmDiff.toFixed(3)}
-                  </td>
-                </tr>
+          {/* ACTION BUTTONS BELOW RIGHT TABLE */}
+          <div className="flex flex-col gap-2 pt-1">
+            <button
+              onClick={handleDownloadPDF}
+              className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <Download size={16} />
+              <span>Download PDF</span>
+            </button>
 
-                <tr className="bg-blue-100 font-bold text-blue-900 text-[8px] sm:text-[10px] md:text-xs">
-                  <td colSpan={2} className="p-0.5 sm:p-1 border">Crude Protein (CP)</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">CP Required (kg)</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50">{cpReq.toFixed(3)}</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">CP Actual (kg)</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50 text-blue-700">{totalActualCP.toFixed(3)}</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">CP Difference (kg)</td>
-                  <td className={`p-1 sm:p-1.5 border text-center font-bold bg-slate-50 ${cpDiff < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                    {cpDiff.toFixed(3)}
-                  </td>
-                </tr>
-
-                <tr className="bg-purple-100 font-bold text-purple-900 text-[8px] sm:text-[10px] md:text-xs">
-                  <td colSpan={2} className="p-0.5 sm:p-1 border">Energy (MJ)</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Energy Required (MJ)</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50">{energyReq.toFixed(1)}</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Energy Actual (MJ)</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-bold bg-slate-50 text-purple-700">{totalActualEnergy.toFixed(1)}</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Energy Difference (MJ)</td>
-                  <td className={`p-1 sm:p-1.5 border text-center font-bold bg-slate-50 ${energyDiff < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                    {energyDiff.toFixed(1)}
-                  </td>
-                </tr>
-
-                <tr className="bg-amber-100 font-bold text-amber-900 text-[8px] sm:text-[10px] md:text-xs">
-                  <td colSpan={2} className="p-0.5 sm:p-1 border">Cost Breakdown</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Concentrate Cost</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-medium bg-slate-50">৳{costConcentrate.toFixed(0)}</td>
-                </tr>
-                <tr>
-                  <td className="p-1 sm:p-1.5 border text-slate-700 break-words leading-tight">Fodder Cost</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-medium bg-slate-50">৳{costFodder.toFixed(0)}</td>
-                </tr>
-                <tr className="font-bold bg-slate-100">
-                  <td className="p-1 sm:p-1.5 border text-slate-900 break-words leading-tight">Total Cost</td>
-                  <td className="p-1 sm:p-1.5 border text-center font-bold bg-amber-200 text-amber-900">৳{totalCost.toFixed(0)}</td>
-                </tr>
-              </tbody>
-            </table>
+            <button
+              onClick={() => setShowCopyModal(true)}
+              className="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <Copy size={16} />
+              <span>Copy as Text</span>
+            </button>
           </div>
         </div>
 
@@ -721,6 +836,204 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
         </div>
 
       </div>
+
+      {/* HIDDEN PRINTABLE AREA FOR PERFECT PDF GENERATION */}
+      <div id="printable-pdf-area" className="hidden print:block font-sans">
+        {/* LOGO & HEADER */}
+        <div className="flex items-center justify-between border-b-2 border-emerald-800 pb-4 mb-4">
+          <div>
+            <h1 className="text-2xl font-black text-emerald-900 tracking-wide">NOURISH POULTRY & HATCHERY LTD.</h1>
+            <h2 className="text-lg font-bold text-slate-700">Ration Formulation Report</h2>
+          </div>
+          <div className="text-right text-xs text-slate-500">
+            <p>Date: {new Date().toLocaleDateString()}</p>
+            <p>Category: Dairy Feed Calculator</p>
+          </div>
+        </div>
+
+        {/* DAIRY INFORMATION */}
+        <div className="mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h3 className="text-sm font-bold text-emerald-900 uppercase tracking-wider mb-2 border-b border-slate-300 pb-1">
+            Dairy Information
+          </h3>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <p><b>Cow Type:</b> <span className="uppercase">{cowType}</span></p>
+            <p><b>Stage:</b> {stageName}</p>
+            <p><b>Body Weight:</b> {bodyWeight} kg</p>
+            {breedType && <p><b>Breed:</b> {breedType}</p>}
+            {ageMonths && <p><b>Age:</b> {ageMonths} months</p>}
+            {cowType === 'lactating' && (
+              <>
+                <p><b>Milk Yield:</b> {milkYield} L</p>
+                <p><b>Lactation No:</b> {cowData?.lactationNo || '-'}</p>
+                <p><b>Lactation Age:</b> {ageLactationMonths} months</p>
+              </>
+            )}
+            {nourishFeedName && <p className="col-span-2"><b>Selected Nourish Feed:</b> {nourishFeedName}</p>}
+          </div>
+        </div>
+
+        {/* NUTRIENT SUMMARY */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-emerald-900 uppercase tracking-wider mb-2 border-b border-slate-300 pb-1">
+            Nutrient Summary
+          </h3>
+          <table className="w-full text-xs text-left border-collapse border border-slate-300">
+            <thead>
+              <tr className="bg-emerald-800 text-white font-bold">
+                <th className="p-2 border border-slate-300">Parameter</th>
+                <th className="p-2 border border-slate-300 text-center">Required</th>
+                <th className="p-2 border border-slate-300 text-center">Actual</th>
+                <th className="p-2 border border-slate-300 text-center">Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="p-2 border border-slate-300 font-medium">Dry Matter (DM - kg)</td>
+                <td className="p-2 border border-slate-300 text-center">{dmReq.toFixed(3)}</td>
+                <td className="p-2 border border-slate-300 text-center font-bold">{totalActualDM.toFixed(3)}</td>
+                <td className="p-2 border border-slate-300 text-center font-bold">{dmDiff.toFixed(3)}</td>
+              </tr>
+              <tr>
+                <td className="p-2 border border-slate-300 font-medium">Crude Protein (CP - kg)</td>
+                <td className="p-2 border border-slate-300 text-center">{cpReq.toFixed(3)}</td>
+                <td className="p-2 border border-slate-300 text-center font-bold">{totalActualCP.toFixed(3)}</td>
+                <td className="p-2 border border-slate-300 text-center font-bold">{cpDiff.toFixed(3)}</td>
+              </tr>
+              <tr>
+                <td className="p-2 border border-slate-300 font-medium">Energy (MJ)</td>
+                <td className="p-2 border border-slate-300 text-center">{energyReq.toFixed(1)}</td>
+                <td className="p-2 border border-slate-300 text-center font-bold">{totalActualEnergy.toFixed(1)}</td>
+                <td className="p-2 border border-slate-300 text-center font-bold">{energyDiff.toFixed(1)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* SELECTED FEED FORMULATION ITEMS */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-emerald-900 uppercase tracking-wider mb-2 border-b border-slate-300 pb-1">
+            Selected Feed Ingredients
+          </h3>
+          <table className="w-full text-xs text-left border-collapse border border-slate-300">
+            <thead>
+              <tr className="bg-slate-700 text-white font-bold">
+                <th className="p-2 border border-slate-300">Category / Ingredient Name</th>
+                <th className="p-2 border border-slate-300 text-center w-24">Price / kg</th>
+                <th className="p-2 border border-slate-300 text-center w-28">Amount (kg)</th>
+                <th className="p-2 border border-slate-300 text-center w-28">Total Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Concentrate Section */}
+              <tr className="bg-amber-100 font-bold text-amber-900">
+                <td colSpan={4} className="p-1.5 border border-slate-300">Concentrate Ingredients</td>
+              </tr>
+              {selectedConcentrates.length > 0 ? (
+                selectedConcentrates.map(item => (
+                  <tr key={item.id}>
+                    <td className="p-1.5 border border-slate-300 font-medium">{item.name}</td>
+                    <td className="p-1.5 border border-slate-300 text-center">৳{item.price_per_kg}</td>
+                    <td className="p-1.5 border border-slate-300 text-center font-bold">{quantities[item.id]} kg</td>
+                    <td className="p-1.5 border border-slate-300 text-center font-semibold">৳{(quantities[item.id] * item.price_per_kg).toFixed(0)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="p-1.5 border border-slate-300 text-slate-500 italic">No concentrate selected</td>
+                </tr>
+              )}
+
+              {/* Fodder Section */}
+              <tr className="bg-emerald-100 font-bold text-emerald-900">
+                <td colSpan={4} className="p-1.5 border border-slate-300">Fodder Ingredients</td>
+              </tr>
+              {selectedFodders.length > 0 ? (
+                selectedFodders.map(item => (
+                  <tr key={item.id}>
+                    <td className="p-1.5 border border-slate-300 font-medium">{item.name}</td>
+                    <td className="p-1.5 border border-slate-300 text-center">৳{item.price_per_kg}</td>
+                    <td className="p-1.5 border border-slate-300 text-center font-bold">{quantities[item.id]} kg</td>
+                    <td className="p-1.5 border border-slate-300 text-center font-semibold">৳{(quantities[item.id] * item.price_per_kg).toFixed(0)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="p-1.5 border border-slate-300 text-slate-500 italic">No fodder selected</td>
+                </tr>
+              )}
+
+              {/* Total Row */}
+              <tr className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-400">
+                <td colSpan={3} className="p-2 border border-slate-300 text-right">Total Daily Feed Cost:</td>
+                <td className="p-2 border border-slate-300 text-center text-emerald-800 text-sm">৳{totalCost.toFixed(0)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* FOOTER */}
+        <div className="text-center text-xs text-slate-400 border-t border-slate-200 pt-4">
+          Generated via Nourish Dairy Ration Formulation Tool
+        </div>
+      </div>
+
+      {/* POPUP MODAL FOR COPY AS TEXT */}
+      {showCopyModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh]">
+            
+            {/* Modal Header */}
+            <div className="bg-slate-800 text-white p-3 sm:p-4 flex justify-between items-center">
+              <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                <Copy size={18} />
+                <span>Formulation Text Preview</span>
+              </h3>
+              <button
+                onClick={() => setShowCopyModal(false)}
+                className="text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto flex-1 bg-slate-50">
+              <pre className="font-mono text-xs sm:text-sm text-slate-800 bg-white p-3.5 rounded-lg border border-slate-200 whitespace-pre-wrap leading-relaxed shadow-inner">
+                {generateFormattedText()}
+              </pre>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-white border-t border-slate-200 flex justify-end items-center gap-2">
+              <button
+                onClick={() => setShowCopyModal(false)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleCopyText}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-2 shadow-xs transition cursor-pointer"
+              >
+                {copied ? (
+                  <>
+                    <Check size={16} />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} />
+                    <span>Copy to Clipboard</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

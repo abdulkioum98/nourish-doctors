@@ -16,11 +16,11 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ onSelectPage }: DashboardProps) {
-  // Cattle Tools
+  // Cattle Tools (Live Weight Estimator এক্টিভ করে দেওয়া হলো)
   const cattleServices = [
     { id: 'cattle-info', title: 'Cattle Ration Calculator', icon: <Calculator className="text-emerald-700" size={20} />, active: true },
+    { id: 'weight-measure', title: 'Live Weight Estimator', icon: <Scale className="text-emerald-700" size={20} />, active: true },
     { id: 'nourish-feeds-reference', title: 'Nourish Cattle Feeds', icon: <Wheat className="text-emerald-700" size={20} />, active: true },
-    { id: 'weight-measure', title: 'Live Weight Estimator', icon: <Scale className="text-emerald-700" size={20} />, active: false },
   ];
 
   // Poultry Tools
@@ -40,16 +40,7 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
     <div className="min-h-screen py-6 px-4 flex flex-col items-center">
       {/* Max Width Container to keeps everything perfectly centered */}
       <div className="w-full max-w-md space-y-8">
-        
-        {/* Main Title */}
-        <div className="text-center pb-2 border-b-2 border-emerald-800/20">
-          <h1 className="text-3xl font-black tracking-tight text-emerald-900">
-            Nourish-Doctors
-          </h1>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">
-            Decision Support & Advisory System
-          </p>
-        </div>
+      
 
         {/* 1. CATTLE SECTION */}
         <section className="space-y-3">

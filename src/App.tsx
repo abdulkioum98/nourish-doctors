@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import CattleSidebar from './components/sidebars/CattleSidebar';
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
 
@@ -11,6 +12,7 @@ import CalculatorFattening, { FatteningCowData } from './pages/cattle/FatteningI
 import CalculatorPage from './pages/cattle/CalculatorDairyPage';
 import CalculatorFatteningPage from './pages/cattle/CalculatorFatteningPage';
 import NourishFeedPage from './pages/cattle/NourishFeedPage';
+import WeightEstimatorPage from './pages/cattle/WeightEstimatorPage';
 
 import FeedNutrientsPage from './pages/references/OtherIngredientsPage';
 import DmReferencePage from './pages/references/DmReferencePage';
@@ -57,7 +59,7 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
 
-  // --- PAGE & APPLICATION STATES ---
+  // --- PAGE & NAVIGATION STATES ---
   const [currentPage, setCurrentPage] = useState<PageType>(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
@@ -65,17 +67,38 @@ export default function App() {
         return 'admin';
       }
     }
-    return 'home'; // App-e dhukar sathei Dashboard ashbe
+    return 'home';
   });
+
+  // পেজ হিস্ট্রি ট্র্যাক করার জন্য স্টেট (Back Button-এর জন্য)
+  const [pageHistory, setPageHistory] = useState<PageType[]>(['home']);
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [refPageTitle, setRefPageTitle] = useState<string>('');
 
-  // Isolated states
+  // Isolated data states
   const [dairyData, setDairyData] = useState<CowData | null>(null);
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
 
-  // 1. SUPABASE AUTH SESSION CHECK (Persistent Login)
+  // Cattle মডিউলের তালিকা (এসব পেজে থাকলে CattleSidebar দেখাবে)
+  const cattlePages: PageType[] = [
+    'cattle-info',
+    'calculator',
+    'calculator-fattening',
+    'fatteningcalculator',
+    'weight-measure',
+    'nourish-feeds',
+    'nourish-feeds-reference',
+    'feed-nutrients',
+    'other-ingredients-reference',
+    'dm-reference',
+    'dm-ratio-reference',
+    'breed-reference',
+  ];
+
+  const isCattleModule = cattlePages.includes(currentPage);
+
+  // 1. SUPABASE AUTH SESSION CHECK
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -89,15 +112,15 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. Browser navigation (Back/Forward URL sync)
+  // 2. Browser Navigation Sync
   useEffect(() => {
     const handleUrlCheck = () => {
       const path = window.location.pathname.toLowerCase();
       if (path === '/admin' || path === '/admin/') {
-        setCurrentPage('admin');
+        navigateToPage('admin', false);
       } else if (path === '/' || path === '') {
         if (currentPage === 'admin') {
-          setCurrentPage('home');
+          navigateToPage('home', false);
         }
       }
     };
@@ -106,19 +129,45 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleUrlCheck);
   }, [currentPage]);
 
+  // পেজ পরিবর্তন ও হিস্ট্রি ম্যানেজমেন্ট হ্যান্ডলার
+  const navigateToPage = (newPage: PageType, addToHistory = true) => {
+    if (addToHistory && newPage !== currentPage) {
+      setPageHistory((prev) => [...prev, currentPage]);
+    }
+    setCurrentPage(newPage);
+  };
+
   const handleSidebarNavigate = (id: string, label: string) => {
     if (window.location.pathname !== '/') {
       window.history.pushState({}, '', '/');
     }
 
     if (id === 'calculator') {
-      setCurrentPage(dairyData ? 'calculator' : 'cattle-info');
+      navigateToPage(dairyData ? 'calculator' : 'cattle-info');
     } else if (id === 'calculator-fattening') {
-      setCurrentPage('calculator-fattening');
+      navigateToPage('calculator-fattening');
     } else {
       setRefPageTitle(label);
-      setCurrentPage(id as PageType);
+      navigateToPage(id as PageType);
     }
+  };
+
+  const handleGoBack = () => {
+    if (pageHistory.length > 0) {
+      const previousPage = pageHistory[pageHistory.length - 1];
+      setPageHistory((prev) => prev.slice(0, -1));
+      setCurrentPage(previousPage);
+    } else {
+      setCurrentPage('home');
+    }
+  };
+
+  const handleGoHome = () => {
+    if (window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/');
+    }
+    setPageHistory([]); // হিস্ট্রি রিসেট
+    setCurrentPage('home');
   };
 
   const handleBackToCalculator = () => {
@@ -127,11 +176,11 @@ export default function App() {
     }
 
     if (currentPage === 'fatteningcalculator' || fatteningData) {
-      setCurrentPage('fatteningcalculator');
+      navigateToPage('fatteningcalculator');
     } else if (dairyData) {
-      setCurrentPage('calculator');
+      navigateToPage('calculator');
     } else {
-      setCurrentPage('cattle-info');
+      navigateToPage('cattle-info');
     }
   };
 
@@ -154,34 +203,32 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 font-sans">
+      {/* 1. Dynamic Navbar */}
       <Navbar
+        currentPage={currentPage}
         onOpenSidebar={() => setSidebarOpen(true)}
-        onGoHome={() => {
-          if (window.location.pathname !== '/') {
-            window.history.pushState({}, '', '/');
-          }
-          setCurrentPage('home');
-        }}
-        onGoCalculator={() => {
-          if (window.location.pathname !== '/') {
-            window.history.pushState({}, '', '/');
-          }
-          if (fatteningData && currentPage === 'calculator-fattening') {
-            setCurrentPage('fatteningcalculator');
-          } else {
-            setCurrentPage(dairyData ? 'calculator' : 'cattle-info');
-          }
-        }}
-        hasCowData={!!dairyData || !!fatteningData}
+        onGoHome={handleGoHome}
+        onGoBack={handleGoBack}
       />
 
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onNavigate={handleSidebarNavigate}
-        activeId={currentPage}
-        userEmail={session.user?.email}
-      />
+      {/* 2. Dynamic Sidebar (Cattle Module or General Dashboard Sidebar) */}
+      {isCattleModule ? (
+        <CattleSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onNavigate={handleSidebarNavigate}
+          activeId={currentPage}
+          userEmail={session.user?.email}
+        />
+      ) : (
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onNavigate={handleSidebarNavigate}
+          activeId={currentPage}
+          userEmail={session.user?.email}
+        />
+      )}
 
       <main className={`p-3 sm:p-5 mx-auto transition-all duration-300 ${
         isFormPage ? 'max-w-2xl' : 'w-full max-w-6xl'
@@ -189,7 +236,7 @@ export default function App() {
 
         {/* HOME / DASHBOARD PAGE */}
         {currentPage === 'home' && (
-          <Dashboard onSelectPage={(pageId) => setCurrentPage(pageId as PageType)} />
+          <Dashboard onSelectPage={(pageId) => navigateToPage(pageId as PageType)} />
         )}
 
         {/* MAIN TOGGLE (Dairy vs Fattening) */}
@@ -197,7 +244,7 @@ export default function App() {
           <div className="flex bg-slate-200 p-1 rounded-xl mb-4">
             <button
               type="button"
-              onClick={() => setCurrentPage('cattle-info')}
+              onClick={() => navigateToPage('cattle-info')}
               className={`flex-1 py-2.5 text-center rounded-lg text-sm font-bold transition-all ${
                 currentPage === 'cattle-info'
                   ? 'bg-emerald-700 text-white shadow-sm'
@@ -208,7 +255,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setCurrentPage('calculator-fattening')}
+              onClick={() => navigateToPage('calculator-fattening')}
               className={`flex-1 py-2.5 text-center rounded-lg text-sm font-bold transition-all ${
                 currentPage === 'calculator-fattening'
                   ? 'bg-emerald-700 text-white shadow-sm'
@@ -226,7 +273,7 @@ export default function App() {
             initialData={dairyData}
             onSaveAndNext={(data) => {
               setDairyData(data);
-              setCurrentPage('calculator');
+              navigateToPage('calculator');
             }}
           />
         )}
@@ -237,7 +284,7 @@ export default function App() {
             initialData={fatteningData}
             onSaveAndNext={(data) => {
               setFatteningData(data);
-              setCurrentPage('fatteningcalculator');
+              navigateToPage('fatteningcalculator');
             }}
           />
         )}
@@ -246,7 +293,7 @@ export default function App() {
         {currentPage === 'calculator' && (
           <CalculatorPage
             cowData={dairyData}
-            onEditCowInfo={() => setCurrentPage('cattle-info')}
+            onEditCowInfo={() => navigateToPage('cattle-info')}
           />
         )}
 
@@ -254,7 +301,7 @@ export default function App() {
         {currentPage === 'fatteningcalculator' && (
           <CalculatorFatteningPage
             fatteningData={fatteningData}
-            onEditInfo={() => setCurrentPage('calculator-fattening')}
+            onEditInfo={() => navigateToPage('calculator-fattening')}
           />
         )}
 
@@ -282,6 +329,11 @@ export default function App() {
         {currentPage === 'breed-reference' && (
           <BreedPage onBack={handleBackToCalculator} />
         )}
+
+        {/* WEIGHT ESTIMATOR PAGE */}
+          {currentPage === 'weight-measure' && (
+            <WeightEstimatorPage onBack={handleBackToCalculator} />
+          )}
 
       </main>
     </div>
