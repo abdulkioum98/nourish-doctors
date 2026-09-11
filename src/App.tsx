@@ -4,9 +4,9 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 
 // Folder-based Sidebars Imports
-import CattleSidebar from './components/sidebars/cattle/CattleSidebar';
-import CattleWeightSidebar from './components/sidebars/cattle/CattleWeightSidebar';
-import NourishCattleFeedSidebar from './components/sidebars/cattle/NourishCattleFeedSidebar';
+import CattleSidebar from './components/sidebars/Cattle/CattleSidebar';
+import CattleWeightSidebar from './components/sidebars/Cattle/CattleWeightSidebar';
+import NourishCattleFeedSidebar from './components/sidebars/Cattle/NourishCattleFeedSidebar';
 
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
