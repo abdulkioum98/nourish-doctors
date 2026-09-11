@@ -124,37 +124,9 @@ export default function LayerLightingSidebar({
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
-            {/* 4. Lighting Guide */}
-            <button
-              onClick={() => handleTabClick('lighting-guide', 'Lighting Program Guide')}
-              className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeTab === 'lighting-guide'
-                  ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
-                  : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <BookOpen size={18} className="text-amber-600" />
-                <span>Lighting Program Guide</span>
-              </div>
-              <ChevronRight size={14} className="text-slate-400" />
-            </button>
+           
 
-            {/* 5. Lux Recommendation */}
-            <button
-              onClick={() => handleTabClick('lux-recommendation', 'Lux Requirements')}
-              className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeTab === 'lux-recommendation'
-                  ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
-                  : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <Sliders size={18} className="text-amber-600" />
-                <span>Lux Requirements</span>
-              </div>
-              <ChevronRight size={14} className="text-slate-400" />
-            </button>
+            
           </nav>
         </div>
 
