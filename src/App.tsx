@@ -156,7 +156,7 @@ export default function App() {
     if (window.location.pathname !== '/') {
       window.history.pushState({}, '', '/');
     }
-    setPageHistory([]); // হিস্ট্রি রিসেট
+    setPageHistory([]); // history clear
     setCurrentPage('home');
   };
 
