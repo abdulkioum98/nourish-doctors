@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
-
-// Folder-based Sidebars Imports
 import CattleSidebar from './components/sidebars/cattle/CattleSidebar';
-import CattleWeightSidebar from './components/sidebars/cattle/CattleWeightSidebar';
-import NourishCattleFeedSidebar from './components/sidebars/cattle/NourishCattleFeedSidebar';
 
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
@@ -27,7 +23,7 @@ import LayerLightCalculator from './pages/poultry/LayerLightCalculator';
 import PoultryUniformityCalculator from './pages/poultry/PoultryUniformityCalculator';
 
 import AdminPage from './pages/admin/AdminPage';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X, LogOut, Mail, Scale, Calculator, History, Info, ChevronRight, Wheat, Sliders, Sparkles, BookOpen } from 'lucide-react';
 
 export type CattleData = CowData | FatteningCowData;
 
@@ -62,12 +58,107 @@ export type PageType =
   | 'breed-reference'
   | 'admin';
 
+// --- INLINE CUSTOM SIDEBAR: CATTLE WEIGHT ---
+function CattleWeightSidebar({ isOpen, onClose, onNavigate, activeId, userEmail }: any) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-70 max-w-[80vw] bg-white h-full shadow-2xl z-50 flex flex-col justify-between overflow-y-auto">
+        <div>
+          <div className="bg-amber-700 text-white p-4 flex justify-between items-center sticky top-0 z-10">
+            <div>
+              <h2 className="font-bold text-base sm:text-lg leading-tight">Weight Estimator</h2>
+              <p className="text-[11px] text-amber-200">Cattle Health & Measurement</p>
+            </div>
+            <button onClick={onClose} className="p-1.5 hover:bg-amber-600/80 rounded-lg text-white/90">
+              <X size={20} />
+            </button>
+          </div>
+          <nav className="p-3 space-y-1">
+            <button onClick={() => { onNavigate('weight-measure', 'Weight Calculator'); onClose(); }} className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between ${activeId === 'weight-measure' ? 'bg-amber-50 text-amber-900 font-bold border-l-4 border-amber-600' : 'text-gray-700 hover:bg-slate-100'}`}>
+              <div className="flex items-center space-x-3"><Calculator size={18} className="text-amber-700" /><span>Weight Calculator</span></div>
+              <ChevronRight size={14} className="text-slate-400" />
+            </button>
+            <div className="pt-6 px-1">
+              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 text-amber-900 text-xs">
+                <p className="font-bold mb-1 flex items-center gap-1 text-amber-800"><Scale size={14} /> Schaeffer's Formula:</p>
+                Live Weight (Lbs) = (Heart Girth² × Length) ÷ 300
+              </div>
+            </div>
+          </nav>
+        </div>
+        <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-3 sticky bottom-0">
+          {userEmail && (
+            <div className="flex items-center space-x-2.5 text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/80">
+              <Mail size={16} className="text-amber-600 shrink-0" />
+              <div className="overflow-hidden">
+                <p className="text-[10px] text-slate-400 font-semibold uppercase">Logged In As</p>
+                <span className="font-semibold truncate text-xs text-slate-700 block">{userEmail}</span>
+              </div>
+            </div>
+          )}
+          <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center justify-center space-x-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 py-2.5 px-3 rounded-xl text-xs font-bold">
+            <LogOut size={15} /><span>Sign Out</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- INLINE CUSTOM SIDEBAR: NOURISH CATTLE FEED ---
+function NourishCattleFeedSidebar({ isOpen, onClose, onNavigate, activeId, userEmail }: any) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-70 max-w-[80vw] bg-white h-full shadow-2xl z-50 flex flex-col justify-between overflow-y-auto">
+        <div>
+          <div className="bg-emerald-800 text-white p-4 flex justify-between items-center sticky top-0 z-10">
+            <div>
+              <h2 className="font-bold text-base sm:text-lg leading-tight">Nourish Feed Section</h2>
+              <p className="text-[11px] text-emerald-200">Cattle Nutrition & Products</p>
+            </div>
+            <button onClick={onClose} className="p-1.5 hover:bg-emerald-700/80 rounded-lg text-white/90">
+              <X size={20} />
+            </button>
+          </div>
+          <nav className="p-3 space-y-1">
+            <button onClick={() => { onNavigate('nourish-feeds', 'Feed Catalogue'); onClose(); }} className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between ${activeId === 'nourish-feeds' ? 'bg-emerald-50 text-emerald-800 font-bold border-l-4 border-emerald-600' : 'text-gray-700 hover:bg-slate-100'}`}>
+              <div className="flex items-center space-x-3"><Wheat size={18} className="text-emerald-700" /><span>Feed Catalogue</span></div>
+              <ChevronRight size={14} className="text-slate-400" />
+            </button>
+            <div className="pt-6 px-1">
+              <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/60 text-emerald-900 text-xs text-center font-medium">
+                Nourish Quality Feeds for Optimal Milk & Meat Production
+              </div>
+            </div>
+          </nav>
+        </div>
+        <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-3 sticky bottom-0">
+          {userEmail && (
+            <div className="flex items-center space-x-2.5 text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/80">
+              <Mail size={16} className="text-emerald-600 shrink-0" />
+              <div className="overflow-hidden">
+                <p className="text-[10px] text-slate-400 font-semibold uppercase">Logged In As</p>
+                <span className="font-semibold truncate text-xs text-slate-700 block">{userEmail}</span>
+              </div>
+            </div>
+          )}
+          <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center justify-center space-x-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 py-2.5 px-3 rounded-xl text-xs font-bold">
+            <LogOut size={15} /><span>Sign Out</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  // --- AUTHENTICATION STATES ---
   const [session, setSession] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
 
-  // --- PAGE & NAVIGATION STATES ---
   const [currentPage, setCurrentPage] = useState<PageType>(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
@@ -78,17 +169,13 @@ export default function App() {
     return 'home';
   });
 
-  // পেজ হিস্ট্রি ট্র্যাক করার জন্য স্টেট (Back Button-এর জন্য)
   const [pageHistory, setPageHistory] = useState<PageType[]>(['home']);
-
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [refPageTitle, setRefPageTitle] = useState<string>('');
 
-  // Isolated data states
   const [dairyData, setDairyData] = useState<CowData | null>(null);
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
 
-  // 1. SUPABASE AUTH SESSION CHECK
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -102,7 +189,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. Browser Navigation Sync
   useEffect(() => {
     const handleUrlCheck = () => {
       const path = window.location.pathname.toLowerCase();
@@ -119,7 +205,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleUrlCheck);
   }, [currentPage]);
 
-  // পেজ পরিবর্তন ও হিস্ট্রি ম্যানেজমেন্ট হ্যান্ডলার
   const navigateToPage = (newPage: PageType, addToHistory = true) => {
     if (addToHistory && newPage !== currentPage) {
       setPageHistory((prev) => [...prev, currentPage]);
@@ -156,7 +241,7 @@ export default function App() {
     if (window.location.pathname !== '/') {
       window.history.pushState({}, '', '/');
     }
-    setPageHistory([]); // history clear
+    setPageHistory([]);
     setCurrentPage('home');
   };
 
@@ -174,9 +259,7 @@ export default function App() {
     }
   };
 
-  // --- SIDEBAR RENDER LOGIC HELPER ---
   const renderSidebar = () => {
-    // ১. Live Weight Estimator পেজের জন্য সাইডবার
     if (currentPage === 'weight-measure') {
       return (
         <CattleWeightSidebar
@@ -189,7 +272,6 @@ export default function App() {
       );
     }
 
-    // ২. Nourish Cattle Feed sidebar
     if (currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') {
       return (
         <NourishCattleFeedSidebar
@@ -202,7 +284,6 @@ export default function App() {
       );
     }
 
-    // ৩. অন্যান্য ক্যাটল পেজসমূহের জন্য সাধারণ ক্যাটল সাইডবার
     const generalCattlePages: PageType[] = [
       'cattle-info',
       'calculator',
@@ -227,7 +308,6 @@ export default function App() {
       );
     }
 
-    // Main Sidebar
     return (
       <Sidebar
         isOpen={sidebarOpen}
@@ -239,7 +319,6 @@ export default function App() {
     );
   };
 
-  // --- RENDER LOADING STATE ---
   if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 text-emerald-800">
@@ -248,17 +327,14 @@ export default function App() {
     );
   }
 
-  // --- RENDER LOGIN IF NOT AUTHENTICATED ---
   if (!session) {
     return <EmailLogin onLoginSuccess={() => window.location.reload()} />;
   }
 
-  // --- RENDER MAIN APPLICATION IF LOGGED IN ---
   const isFormPage = currentPage === 'cattle-info' || currentPage === 'calculator-fattening';
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 font-sans">
-      {/* 1. Dynamic Navbar */}
       <Navbar
         currentPage={currentPage}
         onOpenSidebar={() => setSidebarOpen(true)}
@@ -266,19 +342,16 @@ export default function App() {
         onGoBack={handleGoBack}
       />
 
-      {/* 2. DYNAMIC SIDEBAR (রেন্ডার হেলপার ফাংশনের মাধ্যমে নির্দিষ্ট সাইডবার লোড হবে) */}
       {renderSidebar()}
 
       <main className={`p-3 sm:p-5 mx-auto transition-all duration-300 ${
         isFormPage ? 'max-w-2xl' : 'w-full max-w-6xl'
       }`}>
 
-        {/* HOME / DASHBOARD PAGE */}
         {currentPage === 'home' && (
           <Dashboard onSelectPage={(pageId) => navigateToPage(pageId as PageType)} />
         )}
 
-        {/* MAIN TOGGLE (Dairy vs Fattening) */}
         {isFormPage && (
           <div className="flex bg-slate-200 p-1 rounded-xl mb-4">
             <button
@@ -306,7 +379,6 @@ export default function App() {
           </div>
         )}
         
-        {/* DAIRY INPUT FORM */}
         {currentPage === 'cattle-info' && (
           <CattleInfoPage
             initialData={dairyData}
@@ -317,7 +389,6 @@ export default function App() {
           />
         )}
 
-        {/* FATTENING INPUT FORM */}
         {currentPage === 'calculator-fattening' && (
           <CalculatorFattening
             initialData={fatteningData}
@@ -328,7 +399,6 @@ export default function App() {
           />
         )}
 
-        {/* DAIRY CALCULATOR PAGE */}
         {currentPage === 'calculator' && (
           <CalculatorPage
             cowData={dairyData}
@@ -336,7 +406,6 @@ export default function App() {
           />
         )}
 
-        {/* FATTENING CALCULATOR PAGE */}
         {currentPage === 'fatteningcalculator' && (
           <CalculatorFatteningPage
             fatteningData={fatteningData}
@@ -344,42 +413,34 @@ export default function App() {
           />
         )}
 
-        {/* NOURISH FEEDS REFERENCE PAGE */}
         {(currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') && (
           <NourishFeedPage onBack={handleBackToCalculator} />
         )}
 
-        {/* OTHER INGREDIENTS REFERENCE PAGE */}
         {(currentPage === 'feed-nutrients' || currentPage === 'other-ingredients-reference') && (
           <FeedNutrientsPage onBack={handleBackToCalculator} />
         )}
 
-        {/* DM RATIO REFERENCE PAGE */}
         {(currentPage === 'dm-reference' || currentPage === 'dm-ratio-reference') && (
           <DmReferencePage onBack={handleBackToCalculator} />
         )}
 
-        {/* HIDDEN ADMIN PAGE */}
         {currentPage === 'admin' && (
           <AdminPage onBack={handleBackToCalculator} />
         )}
 
-        {/* BREED PAGE */}
         {currentPage === 'breed-reference' && (
           <BreedPage onBack={handleBackToCalculator} />
         )}
 
-        {/* WEIGHT ESTIMATOR PAGE */}
         {currentPage === 'weight-measure' && (
           <WeightEstimatorPage onBack={handleBackToCalculator} />
         )}
 
-        {/* LAYER LIGHT CALCULATOR PAGE */}
         {currentPage === 'layer-light' && (
           <LayerLightCalculator />
         )}
 
-        {/* FLOCK UNIFORMITY CALCULATOR PAGE */}
         {currentPage === 'poultry-uniformity' && (
           <PoultryUniformityCalculator />
         )}
