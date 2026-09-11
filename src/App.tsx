@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
-import CattleSidebar from './components/sidebars/CattleSidebar';
+
+// Folder-based Sidebars Imports
+import CattleSidebar from './components/sidebars/cattle/CattleSidebar';
+import CattleWeightSidebar from './components/sidebars/cattle/CattleWeightSidebar';
+import NourishCattleFeedSidebar from './components/sidebars/cattle/NourishCattleFeedSidebar';
+
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
 
@@ -82,24 +87,6 @@ export default function App() {
   // Isolated data states
   const [dairyData, setDairyData] = useState<CowData | null>(null);
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
-
-  // Cattle মডিউলের তালিকা (এসব পেজে থাকলে CattleSidebar দেখাবে)
-  const cattlePages: PageType[] = [
-    'cattle-info',
-    'calculator',
-    'calculator-fattening',
-    'fatteningcalculator',
-    'weight-measure',
-    'nourish-feeds',
-    'nourish-feeds-reference',
-    'feed-nutrients',
-    'other-ingredients-reference',
-    'dm-reference',
-    'dm-ratio-reference',
-    'breed-reference',
-  ];
-
-  const isCattleModule = cattlePages.includes(currentPage);
 
   // 1. SUPABASE AUTH SESSION CHECK
   useEffect(() => {
@@ -187,6 +174,71 @@ export default function App() {
     }
   };
 
+  // --- SIDEBAR RENDER LOGIC HELPER ---
+  const renderSidebar = () => {
+    // ১. Live Weight Estimator পেজের জন্য সাইডবার
+    if (currentPage === 'weight-measure') {
+      return (
+        <CattleWeightSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onNavigate={handleSidebarNavigate}
+          activeId={currentPage}
+          userEmail={session?.user?.email}
+        />
+      );
+    }
+
+    // ২. Nourish Cattle Feed sidebar
+    if (currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') {
+      return (
+        <NourishCattleFeedSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onNavigate={handleSidebarNavigate}
+          activeId={currentPage}
+          userEmail={session?.user?.email}
+        />
+      );
+    }
+
+    // ৩. অন্যান্য ক্যাটল পেজসমূহের জন্য সাধারণ ক্যাটল সাইডবার
+    const generalCattlePages: PageType[] = [
+      'cattle-info',
+      'calculator',
+      'calculator-fattening',
+      'fatteningcalculator',
+      'feed-nutrients',
+      'other-ingredients-reference',
+      'dm-reference',
+      'dm-ratio-reference',
+      'breed-reference',
+    ];
+
+    if (generalCattlePages.includes(currentPage)) {
+      return (
+        <CattleSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onNavigate={handleSidebarNavigate}
+          activeId={currentPage}
+          userEmail={session?.user?.email}
+        />
+      );
+    }
+
+    // Main Sidebar
+    return (
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onNavigate={handleSidebarNavigate}
+        activeId={currentPage}
+        userEmail={session?.user?.email}
+      />
+    );
+  };
+
   // --- RENDER LOADING STATE ---
   if (checkingAuth) {
     return (
@@ -214,24 +266,8 @@ export default function App() {
         onGoBack={handleGoBack}
       />
 
-      {/* 2. Dynamic Sidebar (Cattle Module or General Dashboard Sidebar) */}
-      {isCattleModule ? (
-        <CattleSidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          onNavigate={handleSidebarNavigate}
-          activeId={currentPage}
-          userEmail={session.user?.email}
-        />
-      ) : (
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          onNavigate={handleSidebarNavigate}
-          activeId={currentPage}
-          userEmail={session.user?.email}
-        />
-      )}
+      {/* 2. DYNAMIC SIDEBAR (রেন্ডার হেলপার ফাংশনের মাধ্যমে নির্দিষ্ট সাইডবার লোড হবে) */}
+      {renderSidebar()}
 
       <main className={`p-3 sm:p-5 mx-auto transition-all duration-300 ${
         isFormPage ? 'max-w-2xl' : 'w-full max-w-6xl'
@@ -334,19 +370,19 @@ export default function App() {
         )}
 
         {/* WEIGHT ESTIMATOR PAGE */}
-          {currentPage === 'weight-measure' && (
-            <WeightEstimatorPage onBack={handleBackToCalculator} />
-          )}
+        {currentPage === 'weight-measure' && (
+          <WeightEstimatorPage onBack={handleBackToCalculator} />
+        )}
 
-          {/* LAYER LIGHT CALCULATOR PAGE */}
+        {/* LAYER LIGHT CALCULATOR PAGE */}
         {currentPage === 'layer-light' && (
           <LayerLightCalculator />
         )}
 
         {/* FLOCK UNIFORMITY CALCULATOR PAGE */}
-          {currentPage === 'poultry-uniformity' && (
-            <PoultryUniformityCalculator />
-          )}
+        {currentPage === 'poultry-uniformity' && (
+          <PoultryUniformityCalculator />
+        )}
 
       </main>
     </div>

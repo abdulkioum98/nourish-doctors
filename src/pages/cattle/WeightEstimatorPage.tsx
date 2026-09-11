@@ -35,29 +35,7 @@ export default function WeightEstimatorPage({ onBack }: WeightEstimatorPageProps
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-800 to-teal-800 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
-        <div className="absolute right-[-10px] bottom-[-10px] opacity-10 pointer-events-none">
-          <Scale size={160} />
-        </div>
-        <div className="flex justify-between items-start">
-          <div>
-            
-            <h2 className="text-xl sm:text-2xl font-bold mt-2 leading-tight">
-              Cattle Weight Estimator
-            </h2>
-            <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
-              Estimate live cattle weight accurately using Schaeffer's Formula.
-            </p>
-          </div>
-          <button
-            onClick={() => setShowGuide(!showGuide)}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition text-emerald-100 shrink-0 ml-2"
-            title="Measurement Guide"
-          >
-            <HelpCircle size={22} />
-          </button>
-        </div>
-      </div>
+      
 
       {/* Measurement Guide Accordion/Modal */}
       {showGuide && (
@@ -87,6 +65,13 @@ export default function WeightEstimatorPage({ onBack }: WeightEstimatorPageProps
             <Scale size={18} className="text-emerald-600" />
             <span>Enter Measurements (in inches)</span>
           </h3>
+          <button
+            onClick={() => setShowGuide(!showGuide)}
+            className="p-2  rounded-xl transition text-black shrink-0 ml-2 cursor-pointer hover:bg-emerald-100/70 hover:text-emerald-800 flex items-center justify-center"
+            title="Measurement Guide"
+          >
+            <HelpCircle size={22} />
+          </button>
           {(lengthInches || girthInches) && (
             <button
               onClick={handleReset}

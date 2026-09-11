@@ -66,7 +66,7 @@ export default function PoultryUniformityCalculator() {
     if (!hasData) return { label: 'Waiting for Input', color: 'text-slate-500 bg-slate-100 border-slate-200' };
     if (pct >= 85) return { label: 'Excellent', color: 'text-emerald-700 bg-emerald-100 border-emerald-300' };
     if (pct >= 80) return { label: 'Good', color: 'text-blue-700 bg-blue-100 border-blue-300' };
-    if (pct >= 70) return { label: 'Fair / Average', color: 'text-amber-700 bg-amber-100 border-amber-300' };
+    if (pct >= 70) return { label: 'Fair / Average', color: 'text-amber-800 bg-amber-100 border-amber-300' };
     return { label: 'Poor (Needs Management Attention)', color: 'text-rose-700 bg-rose-100 border-rose-300' };
   };
 
@@ -134,7 +134,7 @@ export default function PoultryUniformityCalculator() {
         <div className="md:col-span-7 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex justify-between items-center border-b border-slate-100 pb-2">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <Calculator size={18} className="text-emerald-600" />
+              <Calculator size={18} className="text-amber-600" />
               <span>Individual Bird Weights</span>
             </h2>
 
@@ -142,13 +142,13 @@ export default function PoultryUniformityCalculator() {
             <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">
               <button
                 onClick={() => handleUnitChange('g')}
-                className={`px-3 py-1 rounded-md transition cursor-pointer ${unit === 'g' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-3 py-1 rounded-md transition cursor-pointer ${unit === 'g' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 Gram (g)
               </button>
               <button
                 onClick={() => handleUnitChange('kg')}
-                className={`px-3 py-1 rounded-md transition cursor-pointer ${unit === 'kg' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-3 py-1 rounded-md transition cursor-pointer ${unit === 'kg' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 Kg
               </button>
@@ -157,14 +157,14 @@ export default function PoultryUniformityCalculator() {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Enter Bird Weights in <span className="text-emerald-700 font-extrabold uppercase">{unit === 'g' ? 'Grams (g)' : 'Kilograms (kg)'}</span> (separated by comma, space, or newline)
+              Enter Bird Weights in <span className="text-amber-700 font-extrabold uppercase">{unit === 'g' ? 'Grams (g)' : 'Kilograms (kg)'}</span> (separated by comma, space, or newline)
             </label>
             <textarea
               rows={6}
               value={weightsInput}
               onChange={(e) => setWeightsInput(e.target.value)}
               placeholder={unit === 'g' ? "e.g. 1250, 1300, 1180, 1220, 1270..." : "e.g. 1.25, 1.30, 1.18, 1.22, 1.27..."}
-              className="w-full border border-slate-300 rounded-lg p-3 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed"
+              className="w-full border border-slate-300 rounded-lg p-3 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 leading-relaxed"
             />
             <div className="flex justify-between items-center mt-1 text-[11px] text-slate-500">
               <span>Total Birds Inputted: <b className="text-slate-800">{totalBirds}</b></span>
@@ -175,7 +175,7 @@ export default function PoultryUniformityCalculator() {
           {/* RESET BUTTON */}
           <button
             onClick={handleReset}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            className="bg-amber-700/60 hover:bg-amber-700 text-white border border-amber-400/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
           >
             <RefreshCw size={14} />
             <span>Reset Input</span>
@@ -205,7 +205,7 @@ export default function PoultryUniformityCalculator() {
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-600 font-medium">±10% Weight Range:</span>
-                  <span className="font-bold text-emerald-800">
+                  <span className="font-bold text-amber-800">
                     {totalBirds > 0 ? `${minWeight.toFixed(unit === 'g' ? 0 : 3)} – ${maxWeight.toFixed(unit === 'g' ? 0 : 3)} ${unit}` : `0 – 0 ${unit}`}
                   </span>
                 </div>
@@ -223,9 +223,9 @@ export default function PoultryUniformityCalculator() {
               </div>
 
               {/* MAIN RESULT DISPLAY */}
-              <div className="p-4 bg-emerald-500/10 border-2 border-emerald-500/40 rounded-xl text-center space-y-1.5">
-                <span className="text-xs font-extrabold uppercase tracking-wide text-emerald-900 block">Flock Uniformity</span>
-                <div className="text-4xl font-black text-emerald-700">
+              <div className="p-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-xl text-center space-y-1.5">
+                <span className="text-xs font-extrabold uppercase tracking-wide text-amber-900 block">Flock Uniformity</span>
+                <div className="text-4xl font-black text-amber-700">
                   {totalBirds > 0 ? `${uniformityPct.toFixed(1)}%` : '0.0%'}
                 </div>
                 <div className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${status.color}`}>
@@ -249,7 +249,7 @@ export default function PoultryUniformityCalculator() {
             <button
               onClick={handlePrint}
               disabled={totalBirds === 0}
-              className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed"
+              className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed"
             >
               <Printer size={14} />
               <span>Print / PDF</span>
@@ -275,24 +275,24 @@ export default function PoultryUniformityCalculator() {
       {/* FORMULA REFERENCE BOARD */}
       <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-3 no-print">
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
-          <Scale size={16} className="text-emerald-700" />
+          <Scale size={16} className="text-amber-700" />
           <span>±10% Method Step-by-Step Calculation Formula</span>
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs text-slate-700">
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
-            <span className="font-bold text-emerald-800 block">Step 1: Avg Weight</span>
+            <span className="font-bold text-amber-800 block">Step 1: Avg Weight</span>
             <p className="font-mono text-[11px]">Total Weight ÷ Birds Weighed</p>
           </div>
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
-            <span className="font-bold text-emerald-800 block">Step 2: Min Limit</span>
+            <span className="font-bold text-amber-800 block">Step 2: Min Limit</span>
             <p className="font-mono text-[11px]">Avg Weight × 0.90 (-10%)</p>
           </div>
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
-            <span className="font-bold text-emerald-800 block">Step 3: Max Limit</span>
+            <span className="font-bold text-amber-800 block">Step 3: Max Limit</span>
             <p className="font-mono text-[11px]">Avg Weight × 1.10 (+10%)</p>
           </div>
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
-            <span className="font-bold text-emerald-800 block">Step 4: Uniformity %</span>
+            <span className="font-bold text-amber-800 block">Step 4: Uniformity %</span>
             <p className="font-mono text-[11px]">(Birds in Range ÷ Total) × 100</p>
           </div>
         </div>
@@ -300,7 +300,7 @@ export default function PoultryUniformityCalculator() {
 
       {/* PRINTABLE AREA FOR PDF / PRINT */}
       <div id="printable-area" className="hidden print:block font-sans">
-        <div className="border-b-2 border-emerald-800 pb-3 mb-4 flex justify-between items-center">
+        <div className="border-b-2 border-amber-600 pb-3 mb-4 flex justify-between items-center">
           <div>
             <h1 className="text-xl font-bold text-slate-900">Flock Uniformity Calculation Report</h1>
             <p className="text-xs text-slate-500">Standard ±10% Method</p>
@@ -323,9 +323,9 @@ export default function PoultryUniformityCalculator() {
             <p><b>Birds falling within range:</b> {birdsInRange} out of {totalBirds}</p>
           </div>
 
-          <div className="border-2 border-emerald-700 bg-emerald-50 rounded p-4 text-center">
-            <p className="text-xs uppercase font-bold text-emerald-900">Flock Uniformity Result</p>
-            <p className="text-3xl font-black text-emerald-800 my-1">{uniformityPct.toFixed(1)}%</p>
+          <div className="border-2 border-amber-600 bg-amber-50 rounded p-4 text-center">
+            <p className="text-xs uppercase font-bold text-amber-900">Flock Uniformity Result</p>
+            <p className="text-3xl font-black text-amber-700 my-1">{uniformityPct.toFixed(1)}%</p>
             <p className="text-xs font-bold text-slate-700">Flock Status: {status.label}</p>
           </div>
         </div>
