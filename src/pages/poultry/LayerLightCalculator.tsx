@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
-import { Lightbulb, Calculator, Copy, Check, Printer, RefreshCw } from 'lucide-react';
+import { Calculator, Copy, Check, Printer, RefreshCw } from 'lucide-react';
+import { LayerLightingTab } from '../../components/sidebars/Poultry/LayerLightingSidebar';
 
-export default function LayerLightCalculator() {
+// Props Interface to solve ts(2322) error
+interface LayerLightCalculatorProps {
+  activeTab?: LayerLightingTab;
+  setActiveTab?: React.Dispatch<React.SetStateAction<LayerLightingTab>>;
+}
+
+export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerLightCalculatorProps) {
   // Input States
   const [lengthFt, setLengthFt] = useState<number | ''>("");
   const [widthFt, setWidthFt] = useState<number | ''>("");
@@ -80,16 +87,25 @@ export default function LayerLightCalculator() {
         }
       `}</style>
 
-
       {/* MAIN CALCULATOR GRID */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 no-print">
         
         {/* LEFT COLUMN: INPUT FORM */}
         <div className="md:col-span-7 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
-            <Calculator size={18} className="text-amber-600" />
-            <span>Shed & Lighting Inputs</span>
-          </h2>
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Calculator size={18} className="text-amber-600" />
+              <span>Shed & Lighting Inputs</span>
+            </h2>
+
+            <button
+              onClick={handleReset}
+              className="bg-amber-700/80 hover:bg-amber-700 text-white border border-amber-400/40 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              <span>Reset</span>
+            </button>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -144,14 +160,6 @@ export default function LayerLightCalculator() {
               <span className="text-[10px] text-slate-500 mt-0.5 block">Common: 400 / 500 / 600 Lumen</span>
             </div>
           </div>
-
-          <button
-          onClick={handleReset}
-          className="bg-amber-700/60 hover:bg-amber-700 text-white border border-amber-400/40 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer self-end sm:self-auto"
-        >
-          <RefreshCw size={14} />
-          <span>Reset</span>
-        </button>
 
           {/* QUICK LUX GUIDE */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 space-y-1">

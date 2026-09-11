@@ -18,6 +18,8 @@ const PAGE_TITLES: Record<string, string> = {
   'poultry-uniformity': 'Uniformity Calculator',
   'layer-feeds': 'Commercial Poultry Feeds',
   'fish-feed': 'Aqua Feed Requirements',
+  'weight-guide': 'Measurement Guide',
+  'schaeffer-formula': "Schaeffer's Formula",
 };
 
 export default function Navbar({ onOpenSidebar, onGoHome, onGoBack, currentPage }: NavbarProps) {

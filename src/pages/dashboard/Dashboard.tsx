@@ -28,7 +28,7 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
     { id: 'layer-light', title: 'Layer Lighting Calculator', icon: <Sparkles className="text-amber-700" size={20} />, active: true },
     { id: 'poultry-uniformity', title: 'Uniformity Calculator', icon: <BarChart3 className="text-amber-700" size={20} />, active: true },
     { id: 'poultry-space', title: 'Space & Equipment Calcs', icon: <Ruler className="text-amber-700" size={20} />, active: true },
-    { id: 'layer-feeds', title: 'Commercial Poultry Feeds', icon: <Egg className="text-amber-700" size={20} />, active: true },
+    { id: 'layer-feeds', title: 'Nourish Poultry Feeds', icon: <Egg className="text-amber-700" size={20} />, active: true },
   ];
 
   // Aqua Tools

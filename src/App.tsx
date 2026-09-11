@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar';
 import CattleSidebar from './components/sidebars/Cattle/CattleSidebar';
 import CattleWeightSidebar from './components/sidebars/Cattle/CattleWeightSidebar';
 import NourishCattleFeedSidebar from './components/sidebars/Cattle/NourishCattleFeedSidebar';
+import LayerLightingSidebar from './components/sidebars/Poultry/LayerLightingSidebar'; // <-- ইমপোর্ট যুক্ত করা হলো
 
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
@@ -18,6 +19,8 @@ import CalculatorPage from './pages/cattle/CalculatorDairyPage';
 import CalculatorFatteningPage from './pages/cattle/CalculatorFatteningPage';
 import NourishFeedPage from './pages/cattle/NourishFeedPage';
 import WeightEstimatorPage from './pages/cattle/WeightEstimatorPage';
+import MeasurementGuidePage from './pages/cattle/MeasurementGuidePage';
+import SchaefferFormulaPage from './pages/cattle/SchaefferFormulaPage';
 
 import FeedNutrientsPage from './pages/references/OtherIngredientsPage';
 import DmReferencePage from './pages/references/DmReferencePage';
@@ -25,6 +28,8 @@ import BreedPage from './pages/references/BreedPage';
 
 import LayerLightCalculator from './pages/poultry/LayerLightCalculator';
 import PoultryUniformityCalculator from './pages/poultry/PoultryUniformityCalculator';
+import LumenReferencePage from './pages/poultry/LumenReferencePage'; 
+import FormulaReferencePage from './pages/poultry/LightingFormulaReferencePage'; 
 
 import AdminPage from './pages/admin/AdminPage';
 import { Loader2 } from 'lucide-react';
@@ -41,8 +46,14 @@ export type PageType =
   | 'weight-measure'
   | 'nourish-feeds'
   | 'nourish-feeds-reference'
+  | 'weight-guide'
+  | 'schaeffer-formula'
+  
   // --- Poultry Section ---
   | 'layer-light'
+  | 'lighting-calculator'
+  | 'lighting-guide'
+  | 'lux-formula'
   | 'poultry-space'
   | 'poultry-uniformity'
   | 'layer-feeds'
@@ -51,6 +62,9 @@ export type PageType =
   | 'layer-standard'
   | 'broiler-standard'
   | 'sonali-standard'
+  | 'lumen-reference'
+  | 'formula-guide' 
+
   // --- Fish Section ---
   | 'fish-feed'
   // --- References & Admin ---
@@ -136,6 +150,8 @@ export default function App() {
       navigateToPage(dairyData ? 'calculator' : 'cattle-info');
     } else if (id === 'calculator-fattening') {
       navigateToPage('calculator-fattening');
+    } else if (id === 'lighting-calculator') {
+      navigateToPage('layer-light');
     } else {
       setRefPageTitle(label);
       navigateToPage(id as PageType);
@@ -176,8 +192,32 @@ export default function App() {
 
   // --- SIDEBAR RENDER LOGIC HELPER ---
   const renderSidebar = () => {
-    // ১. Live Weight Estimator পেজের জন্য সাইডবার
-    if (currentPage === 'weight-measure') {
+    // ১. Layer Lighting Calculator এবং এর সম্পর্কিত রেফারেন্স পেজগুলোর জন্য সাইডবার
+    const lightingPages: PageType[] = [
+  'layer-light',
+  'lighting-calculator',
+  'lumen-reference',
+  'formula-guide',
+  'lighting-guide',
+  'lux-formula'
+];
+
+    if (lightingPages.includes(currentPage)) {
+      return (
+        <LayerLightingSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onNavigate={handleSidebarNavigate}
+          activeId={currentPage === 'layer-light' ? 'lighting-calculator' : currentPage}
+          userEmail={session?.user?.email}
+        />
+      );
+    }
+
+    // ২. Live Weight Estimator, Measurement Guide, Schaeffer's Formula পেজের জন্য সাইডবার
+    const weightPages: PageType[] = ['weight-measure', 'weight-guide', 'schaeffer-formula'];
+
+    if (weightPages.includes(currentPage)) {
       return (
         <CattleWeightSidebar
           isOpen={sidebarOpen}
@@ -189,7 +229,7 @@ export default function App() {
       );
     }
 
-    // ২. Nourish Cattle Feed sidebar
+    // ৩. Nourish Cattle Feed sidebar
     if (currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') {
       return (
         <NourishCattleFeedSidebar
@@ -202,7 +242,7 @@ export default function App() {
       );
     }
 
-    // ৩. অন্যান্য ক্যাটল পেজসমূহের জন্য সাধারণ ক্যাটল সাইডবার
+    // ৪. অন্যান্য ক্যাটল পেজসমূহের জন্য সাধারণ ক্যাটল সাইডবার
     const generalCattlePages: PageType[] = [
       'cattle-info',
       'calculator',
@@ -266,7 +306,7 @@ export default function App() {
         onGoBack={handleGoBack}
       />
 
-      {/* 2. DYNAMIC SIDEBAR (রেন্ডার হেলপার ফাংশনের মাধ্যমে নির্দিষ্ট সাইডবার লোড হবে) */}
+      {/* 2. DYNAMIC SIDEBAR */}
       {renderSidebar()}
 
       <main className={`p-3 sm:p-5 mx-auto transition-all duration-300 ${
@@ -371,17 +411,37 @@ export default function App() {
 
         {/* WEIGHT ESTIMATOR PAGE */}
         {currentPage === 'weight-measure' && (
-          <WeightEstimatorPage onBack={handleBackToCalculator} />
+          <WeightEstimatorPage onBack={handleGoBack} />
         )}
 
         {/* LAYER LIGHT CALCULATOR PAGE */}
-        {currentPage === 'layer-light' && (
+        {(currentPage === 'layer-light' || currentPage === 'lighting-calculator') && (
           <LayerLightCalculator />
         )}
 
         {/* FLOCK UNIFORMITY CALCULATOR PAGE */}
         {currentPage === 'poultry-uniformity' && (
           <PoultryUniformityCalculator />
+        )}
+
+        {/* MEASUREMENT GUIDE PAGE */}
+        {currentPage === 'weight-guide' && (
+          <MeasurementGuidePage onBack={handleGoBack} />
+        )}
+
+        {/* SCHAEFFER FORMULA PAGE */}
+        {currentPage === 'schaeffer-formula' && (
+          <SchaefferFormulaPage onBack={handleGoBack} />
+        )}
+
+        {/* LUMEN REFERENCE PAGE */}
+        {currentPage === 'lumen-reference' && (
+          <LumenReferencePage onBack={handleGoBack} />
+        )}
+
+        {/* FORMULA GUIDE PAGE */}
+        {currentPage === 'formula-guide' && (
+          <FormulaReferencePage onBack={handleGoBack} />
         )}
 
       </main>

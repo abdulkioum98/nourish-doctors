@@ -7,14 +7,24 @@ import {
   Lightbulb,
   BookOpen,
   ChevronRight,
-  HelpCircle
+  Sliders,
+  SunMedium,
+  Binary
 } from 'lucide-react';
+
+export type LayerLightingTab = 
+  | 'lighting-calculator' 
+  | 'lumen-reference' 
+  | 'formula-guide' 
+  | 'lighting-guide' 
+  | 'lux-recommendation';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onNavigate: (id: string, label: string) => void;
-  activeId?: string;
+  onNavigate?: (id: LayerLightingTab, label: string) => void;
+  activeTab?: LayerLightingTab;
+  setActiveTab?: (tab: LayerLightingTab) => void;
   userEmail?: string;
 }
 
@@ -22,12 +32,18 @@ export default function LayerLightingSidebar({
   isOpen,
   onClose,
   onNavigate,
-  activeId = 'lighting-calculator',
+  activeTab = 'lighting-calculator',
+  setActiveTab,
   userEmail
 }: SidebarProps) {
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  const handleTabClick = (id: LayerLightingTab, label: string) => {
+    if (setActiveTab) setActiveTab(id);
+    if (onNavigate) onNavigate(id, label);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -46,8 +62,8 @@ export default function LayerLightingSidebar({
           {/* Header - Amber Theme */}
           <div className="bg-amber-600 text-white p-4 flex justify-between items-center sticky top-0 z-10">
             <div>
-              <h2 className="font-bold text-base sm:text-lg leading-tight">Lighting Estimator</h2>
-              <p className="text-[11px] text-amber-100">Layer Poultry & Lux Calculation</p>
+              <h2 className="font-bold text-base sm:text-lg leading-tight">Lighting Manager</h2>
+              <p className="text-[11px] text-amber-100">Layer Poultry Light & Lux Calculation</p>
             </div>
             <button 
               onClick={onClose} 
@@ -60,14 +76,11 @@ export default function LayerLightingSidebar({
 
           {/* Navigation Items */}
           <nav className="p-3 space-y-1">
-            {/* 1. Light Calculator */}
+            {/* 1. Lighting Calculator */}
             <button
-              onClick={() => {
-                onNavigate('lighting-calculator', 'Light Calculator');
-                onClose();
-              }}
+              onClick={() => handleTabClick('lighting-calculator', 'Light Calculator')}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'lighting-calculator'
+                activeTab === 'lighting-calculator'
                   ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
@@ -79,46 +92,69 @@ export default function LayerLightingSidebar({
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
-            {/* 2. Lighting Program Guide */}
+            {/* 2. Lumen Reference */}
             <button
-              onClick={() => {
-                onNavigate('lighting-guide', 'Lighting Guide');
-                onClose();
-              }}
+              onClick={() => handleTabClick('lumen-reference', 'Lumen Reference')}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'lighting-guide'
+                activeTab === 'lumen-reference'
+                  ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
+                  : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <SunMedium size={18} className="text-amber-600" />
+                <span>Lumen Reference</span>
+              </div>
+              <ChevronRight size={14} className="text-slate-400" />
+            </button>
+
+            {/* 3. Formula Guide */}
+            <button
+              onClick={() => handleTabClick('formula-guide', 'Formula Guide')}
+              className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
+                activeTab === 'formula-guide'
+                  ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
+                  : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Binary size={18} className="text-amber-600" />
+                <span>Formula Guide</span>
+              </div>
+              <ChevronRight size={14} className="text-slate-400" />
+            </button>
+
+            {/* 4. Lighting Guide */}
+            <button
+              onClick={() => handleTabClick('lighting-guide', 'Lighting Program Guide')}
+              className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
+                activeTab === 'lighting-guide'
                   ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center space-x-3">
                 <BookOpen size={18} className="text-amber-600" />
-                <span>Lighting Guide</span>
+                <span>Lighting Program Guide</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
-            {/* 3. Lux Formula & Standards */}
+            {/* 5. Lux Recommendation */}
             <button
-              onClick={() => {
-                onNavigate('lux-formula', 'Lux Standards');
-                onClose();
-              }}
+              onClick={() => handleTabClick('lux-recommendation', 'Lux Requirements')}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'lux-formula'
+                activeTab === 'lux-recommendation'
                   ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <HelpCircle size={18} className="text-amber-600" />
-                <span>Lux Standards</span>
+                <Sliders size={18} className="text-amber-600" />
+                <span>Lux Requirements</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
-
-            {/* Information Box */}
-
           </nav>
         </div>
 

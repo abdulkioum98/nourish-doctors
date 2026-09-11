@@ -4,11 +4,10 @@ import {
   X,
   LogOut,
   Mail,
-  Scale,
-  Calculator,
-  History,
-  Info,
-  ChevronRight
+  Lightbulb,
+  BookOpen,
+  ChevronRight,
+  HelpCircle
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,11 +18,11 @@ interface SidebarProps {
   userEmail?: string;
 }
 
-export default function CattleWeightSidebar({
+export default function LayerLightingSidebar({
   isOpen,
   onClose,
   onNavigate,
-  activeId = 'weight-calculator',
+  activeId = 'lighting-calculator',
   userEmail
 }: SidebarProps) {
 
@@ -44,15 +43,15 @@ export default function CattleWeightSidebar({
       {/* Sidebar Main Content */}
       <div className="relative w-70 max-w-[80vw] bg-white h-full shadow-2xl z-50 flex flex-col justify-between overflow-y-auto">
         <div>
-          {/* Header */}
-          <div className="bg-amber-700 text-white p-4 flex justify-between items-center sticky top-0 z-10">
+          {/* Header - Amber Theme */}
+          <div className="bg-amber-600 text-white p-4 flex justify-between items-center sticky top-0 z-10">
             <div>
-              <h2 className="font-bold text-base sm:text-lg leading-tight">Weight Estimator</h2>
-              <p className="text-[11px] text-amber-200">Cattle Health & Measurement</p>
+              <h2 className="font-bold text-base sm:text-lg leading-tight">Lighting Estimator</h2>
+              <p className="text-[11px] text-amber-100">Layer Poultry & Lux Calculation</p>
             </div>
             <button 
               onClick={onClose} 
-              className="p-1.5 hover:bg-amber-600/80 rounded-lg transition-colors text-white/90 cursor-pointer"
+              className="p-1.5 hover:bg-amber-700/80 rounded-lg transition-colors text-white/90 cursor-pointer"
               aria-label="Close Sidebar"
             >
               <X size={20} />
@@ -61,69 +60,65 @@ export default function CattleWeightSidebar({
 
           {/* Navigation Items */}
           <nav className="p-3 space-y-1">
+            {/* 1. Light Calculator */}
             <button
               onClick={() => {
-                onNavigate('weight-calculator', 'Weight Calculator');
+                onNavigate('lighting-calculator', 'Light Calculator');
                 onClose();
               }}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'weight-calculator'
+                activeId === 'lighting-calculator'
                   ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <Calculator size={18} className="text-amber-700" />
-                <span>Weight Calculator</span>
+                <Lightbulb size={18} className="text-amber-600" />
+                <span>Light Calculator</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
+            {/* 2. Lighting Program Guide */}
             <button
               onClick={() => {
-                onNavigate('weight-history', 'Estimation History');
+                onNavigate('lighting-guide', 'Lighting Guide');
                 onClose();
               }}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'weight-history'
+                activeId === 'lighting-guide'
                   ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <History size={18} className="text-amber-700" />
-                <span>Saved History</span>
+                <BookOpen size={18} className="text-amber-600" />
+                <span>Lighting Guide</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
+            {/* 3. Lux Formula & Standards */}
             <button
               onClick={() => {
-                onNavigate('weight-guide', 'Measurement Guide');
+                onNavigate('lux-formula', 'Lux Standards');
                 onClose();
               }}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'weight-guide'
+                activeId === 'lux-formula'
                   ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <Info size={18} className="text-amber-700" />
-                <span>Measurement Guide</span>
+                <HelpCircle size={18} className="text-amber-600" />
+                <span>Lux Standards</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
             {/* Information Box */}
-            <div className="pt-6 px-1">
-              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 text-amber-900 text-xs text-left leading-relaxed">
-                <p className="font-bold mb-1 flex items-center gap-1 text-amber-800">
-                  <Scale size={14} /> Schaeffer's Formula:
-                </p>
-                Live Weight (Lbs) = (Heart Girth² × Length) ÷ 300
-              </div>
-            </div>
+
           </nav>
         </div>
 
