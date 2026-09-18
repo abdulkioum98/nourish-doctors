@@ -1,197 +1,224 @@
 import React from 'react';
-import { BookOpen, Calculator, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Calculator, CheckCircle2, Lightbulb, Layers, Ruler, ArrowRight } from 'lucide-react';
 
 export default function FormulaReferencePage() {
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-700 via-amber-600 to-amber-500 text-white p-6 sm:p-8 rounded-3xl shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-amber-800/40 rounded-2xl border border-amber-400/30">
-            <BookOpen className="text-amber-200" size={28} />
+    <div className="space-y-8 max-w-4xl mx-auto pb-12 font-sans text-slate-800">
+      
+      {/* 1. Header Banner */}
+      <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+            <BookOpen className="text-amber-400" size={28} />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">
-              Layer Lighting Calculation Guide
-            </h1>
             
+            <h1 className="text-xl sm:text-2xl font-bold text-white mt-0.5">
+              Layer Lighting Calculation Formula
+            </h1>
           </div>
         </div>
       </div>
 
-      {/* Formula Highlight Box */}
-      <div className="bg-slate-900 text-white p-6 sm:p-7 rounded-3xl space-y-4 border border-slate-800 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-        
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold text-amber-400 uppercase tracking-widest bg-amber-950/80 border border-amber-800/60 px-3 py-1 rounded-full">
-            Core Mathematical Principle
+      {/* 2. Core Mathematical Principles */}
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Layers size={18} className="text-amber-600" />
+            Core Calculation Formulas
+          </h2>
+          <span className="text-xs font-mono bg-slate-100 text-slate-700 px-3 py-1 rounded-md border border-slate-200 font-semibold">
+            1 Lux = 1 Lumen / m²
           </span>
-          <span className="text-xs text-slate-400">1 Lux = 1 Lumen / m²</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60">
-            <div className="text-xs text-amber-300 font-semibold mb-1">Step A: Area Conversion</div>
-            <div className="text-sm font-mono font-bold text-slate-100">
-              Area (m²) = Area (sq. ft) ÷ 10.764
+        {/* 3 Step Formula Workflow Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Step A */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Step 1</span>
+              <h3 className="text-xs font-bold text-slate-800 mt-1">Area Conversion</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">Convert Floor Area to Sq. Meters</p>
+            </div>
+            <div className="mt-4 p-2.5 bg-white rounded-lg border border-slate-200 font-mono text-xs font-bold text-slate-900 text-center shadow-xs">
+              Area (m²) = Sq. Ft ÷ 10.764
             </div>
           </div>
 
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60">
-            <div className="text-xs text-amber-300 font-semibold mb-1">Step B: Total Lumens Needed</div>
-            <div className="text-sm font-mono font-bold text-slate-100">
-              Total Lumens = Required Lux × Area (m²)
+          {/* Step B */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Step 2</span>
+              <h3 className="text-xs font-bold text-slate-800 mt-1">Total Lumens Needed</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">Required Light Capacity for Shed</p>
+            </div>
+            <div className="mt-4 p-2.5 bg-white rounded-lg border border-slate-200 font-mono text-xs font-bold text-slate-900 text-center shadow-xs">
+              Lumens = Lux × Area (m²)
             </div>
           </div>
-        </div>
 
-        <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl text-center">
-          <div className="text-xs text-amber-200 font-semibold uppercase mb-1">Final Bulb Count Formula</div>
-          <div className="text-base sm:text-xl font-black text-amber-300 font-mono">
-            Total Bulbs = Total Required Lumens ÷ Lumens Per Bulb
+          {/* Step C */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Step 3</span>
+              <h3 className="text-xs font-bold text-slate-800 mt-1">Total Bulb Quantity</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">Bulbs Required Based on Specs</p>
+            </div>
+            <div className="mt-4 p-2.5 bg-white rounded-lg border border-slate-200 font-mono text-xs font-bold text-slate-900 text-center shadow-xs">
+              Bulbs = Lumens ÷ Bulb Output
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Step by Step Breakdown */}
-      <div className="space-y-4">
-        {/* Step 1 */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center gap-3 font-bold text-slate-800 text-base">
-            <span className="w-7 h-7 rounded-xl bg-amber-600 text-white text-xs flex items-center justify-center font-bold shadow-xs">
-              1
-            </span>
-            Calculate Floor Area & Convert to Square Meters (m²)
+      {/* 3. Recommended Light Intensity Table */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+          Recommended Light Intensity by Stage
+        </h2>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl border border-amber-200/80 bg-amber-50/30 space-y-1">
+            <span className="text-[10px] font-bold uppercase text-amber-800 tracking-wider">Brooding Phase</span>
+            <div className="text-xs text-slate-500 font-medium">0 - 1 Week</div>
+            <div className="text-lg font-bold text-slate-900 mt-1">20 - 30 <span className="text-xs text-slate-500 font-normal">Lux</span></div>
           </div>
-          <div className="pl-10 space-y-2 text-xs sm:text-sm text-slate-600">
-            <p>
-              Multiply Length and Width of the shed to get total square feet (sq. ft). Then divide by <strong>10.764</strong> to convert into square meters (m²).
-            </p>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 font-mono text-slate-700">
-              • Area (sq. ft) = Length (ft) × Width (ft)<br />
-              • Area (m²) = Area (sq. ft) ÷ 10.764
-            </div>
-          </div>
-        </div>
 
-        {/* Step 2 */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center gap-3 font-bold text-slate-800 text-base">
-            <span className="w-7 h-7 rounded-xl bg-amber-600 text-white text-xs flex items-center justify-center font-bold shadow-xs">
-              2
-            </span>
-            Determine Required Light Intensity (Lux)
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
+            <span className="text-[10px] font-bold uppercase text-slate-600 tracking-wider">Growing Phase</span>
+            <div className="text-xs text-slate-500 font-medium">2 - 17 Weeks</div>
+            <div className="text-lg font-bold text-slate-900 mt-1">5 - 10 <span className="text-xs text-slate-500 font-normal">Lux</span></div>
           </div>
-          <div className="pl-10 text-xs sm:text-sm text-slate-600 space-y-2">
-            <p>Select required light intensity depending on the age and flock stage:</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-              <div className="bg-amber-50/60 border border-amber-200/80 p-3 rounded-xl">
-                <div className="font-bold text-amber-900 text-xs">Brooding Phase</div>
-                <div className="text-slate-500 text-[11px]">0 - 1 Week</div>
-                <div className="text-amber-700 font-bold mt-1 text-xs">20 - 30 Lux</div>
-              </div>
-              <div className="bg-amber-50/60 border border-amber-200/80 p-3 rounded-xl">
-                <div className="font-bold text-amber-900 text-xs">Growing Phase</div>
-                <div className="text-slate-500 text-[11px]">2 - 17 Weeks</div>
-                <div className="text-amber-700 font-bold mt-1 text-xs">5 - 10 Lux</div>
-              </div>
-              <div className="bg-amber-50/60 border border-amber-200/80 p-3 rounded-xl">
-                <div className="font-bold text-amber-900 text-xs">Laying Phase</div>
-                <div className="text-slate-500 text-[11px]">18+ Weeks</div>
-                <div className="text-amber-700 font-bold mt-1 text-xs">30 - 40 Lux</div>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Step 3 */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center gap-3 font-bold text-slate-800 text-base">
-            <span className="w-7 h-7 rounded-xl bg-amber-600 text-white text-xs flex items-center justify-center font-bold shadow-xs">
-              3
-            </span>
-            Calculate Total Required Lumens
-          </div>
-          <div className="pl-10 space-y-2 text-xs sm:text-sm text-slate-600">
-            <p>
-              Multiply target Lux by total floor area in square meters (m²) to get total required lumens for the shed.
-            </p>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 font-mono text-slate-700">
-              Total Lumens = Required Lux × Area (m²)
-            </div>
-          </div>
-        </div>
-
-        {/* Step 4 */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center gap-3 font-bold text-slate-800 text-base">
-            <span className="w-7 h-7 rounded-xl bg-amber-600 text-white text-xs flex items-center justify-center font-bold shadow-xs">
-              4
-            </span>
-            Select Bulb Rating & Calculate Total Bulbs
-          </div>
-          <div className="pl-10 space-y-2 text-xs sm:text-sm text-slate-600">
-            <p>
-              Check manufacturer rating for bulb lumen output (typically 400, 500, or 600 lumens per bulb). Divide total lumens by lumen output per bulb.
-            </p>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 font-mono text-slate-700">
-              Total Bulbs = Total Lumens ÷ Lumens per Bulb
-            </div>
-          </div>
-        </div>
-
-        {/* Step 5 */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center gap-3 font-bold text-slate-800 text-base">
-            <span className="w-7 h-7 rounded-xl bg-amber-600 text-white text-xs flex items-center justify-center font-bold shadow-xs">
-              5
-            </span>
-            Bulb Spacing & Placement Rules
-          </div>
-          <div className="pl-10 space-y-1 text-xs sm:text-sm text-slate-600">
-            <p>• <strong>Distance between two bulbs:</strong> Should be <strong>1.5 times</strong> the height from bird level.</p>
-            <p>• <strong>Distance from sidewall to first row:</strong> Should be <strong>half (0.5x)</strong> the distance between two bulbs.</p>
+          <div className="p-4 rounded-xl border border-amber-200/80 bg-amber-50/30 space-y-1">
+            <span className="text-[10px] font-bold uppercase text-amber-800 tracking-wider">Laying Phase</span>
+            <div className="text-xs text-slate-500 font-medium">18+ Weeks (Production)</div>
+            <div className="text-lg font-bold text-slate-900 mt-1">30 - 40 <span className="text-xs text-slate-500 font-normal">Lux</span></div>
           </div>
         </div>
       </div>
 
-      {/* Worked Example Card */}
-      <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 space-y-4 shadow-xs">
-        <div className="flex items-center gap-2 font-bold text-amber-900 text-base border-b border-amber-200/80 pb-3">
-          <Calculator className="text-amber-700" size={20} />
-          Practical Worked Example
+      {/* 4. Technical Architectural Placement Rules & Diagram */}
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+          <Ruler size={20} className="text-amber-600" />
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+            Bulb Placement & Spacing Guidelines
+          </h2>
         </div>
 
-        <div className="text-xs sm:text-sm text-slate-700 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-4 rounded-2xl border border-amber-200/60">
-            <div><strong>Shed Size:</strong> 50 ft. × 24 ft.</div>
-            <div><strong>Target Light Intensity:</strong> 40 Lux (Laying)</div>
-            <div><strong>Total Area:</strong> 1,200 sq. ft.</div>
-            <div><strong>Supplied Bulb Output:</strong> 500 Lumens / bulb</div>
+        {/* Clean Architectural SVG Diagram */}
+        <div className="bg-slate-950 p-6 rounded-xl text-white border border-slate-800 space-y-4">
+          <div className="text-center text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-widest">
+            Shed Cross-Section Elevation View
           </div>
 
-          <div className="space-y-1.5 pt-1">
-            <p className="font-semibold text-slate-800">Step-by-Step Calculation:</p>
-            <ol className="list-decimal list-inside space-y-1.5 pl-1 font-mono text-xs text-slate-800">
-              <li>
-                Area in m² = 1,200 ÷ 10.764 = <strong className="text-amber-900">111.48 m²</strong>
-              </li>
-              <li>
-                Total Lumens = 40 Lux × 111.48 m² = <strong className="text-amber-900">4,459.2 Lumens</strong>
-              </li>
-              <li>
-                Total Bulbs Needed = 4,459.2 ÷ 500 = <strong className="text-amber-900">8.91 ≈ 9 Bulbs</strong>
-              </li>
-            </ol>
+          <div className="relative border-b-2 border-slate-700 pb-12 pt-8 flex items-center justify-around px-8">
+            {/* Ceiling Line */}
+            <div className="absolute top-2 left-4 right-4 border-t border-dashed border-slate-700 text-[10px] font-mono text-slate-500 text-center pt-1">
+              Ceiling Line
+            </div>
+
+            {/* Light 1 */}
+            <div className="flex flex-col items-center relative z-10">
+              <div className="p-2 rounded-full bg-amber-500/20 border border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]">
+                <Lightbulb size={20} className="text-amber-400 fill-amber-400" />
+              </div>
+              <div className="w-0 h-0 border-l-[40px] border-l-transparent border-r-[40px] border-r-transparent border-b-[70px] border-b-amber-500/10 mt-1" />
+            </div>
+
+            {/* Light 2 */}
+            <div className="flex flex-col items-center relative z-10">
+              <div className="p-2 rounded-full bg-amber-500/20 border border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]">
+                <Lightbulb size={20} className="text-amber-400 fill-amber-400" />
+              </div>
+              <div className="w-0 h-0 border-l-[40px] border-l-transparent border-r-[40px] border-r-transparent border-b-[70px] border-b-amber-500/10 mt-1" />
+            </div>
+
+            {/* Bird Line Floor */}
+            <div className="absolute bottom-0 left-4 right-4 border-b-2 border-amber-500/80 text-[10px] font-mono text-amber-400/90 text-center pb-1">
+              Bird Level Height
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-amber-100/80 text-amber-900 p-3 rounded-xl text-xs font-semibold">
-            <CheckCircle2 size={16} className="text-amber-700 shrink-0" />
-            <span>Conclusion: For a 50 × 24 ft shed, you require exactly 9 bulbs of 500 Lumens each to maintain 40 Lux.</span>
+          {/* Rules */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
+            <div className="p-3 bg-slate-900 rounded-lg border border-slate-800">
+              <strong className="text-amber-400 block mb-1">Distance Between Bulbs:</strong>
+              <p className="text-slate-300">
+                Spacing between two adjacent light fixtures should be <span className="text-white font-semibold">1.5 times</span> the height from bird level (<span className="font-mono text-amber-300">1.5 × H</span>).
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-900 rounded-lg border border-slate-800">
+              <strong className="text-amber-400 block mb-1">Distance from Sidewall:</strong>
+              <p className="text-slate-300">
+                Distance from sidewalls to the first row of bulbs should be <span className="text-white font-semibold">half</span> the distance between bulbs (<span className="font-mono text-amber-300">0.5 × Spacing</span>).
+              </p>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* 5. Practical Worked Example */}
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-4">
+          <div className="p-2 bg-slate-900 text-amber-400 rounded-lg">
+            <Calculator size={18} />
+          </div>
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+            Practical Calculation Example
+          </h2>
+        </div>
+
+        {/* Input Parameters Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+          <div>
+            <span className="text-slate-400 font-medium block">Shed Dimensions</span>
+            <strong className="text-slate-800 font-mono text-sm mt-0.5 block">50 ft × 24 ft</strong>
+          </div>
+          <div>
+            <span className="text-slate-400 font-medium block">Total Area</span>
+            <strong className="text-slate-800 font-mono text-sm mt-0.5 block">1,200 sq. ft.</strong>
+          </div>
+          <div>
+            <span className="text-slate-400 font-medium block">Target Light Level</span>
+            <strong className="text-slate-800 font-mono text-sm mt-0.5 block">40 Lux (Laying)</strong>
+          </div>
+          <div>
+            <span className="text-slate-400 font-medium block">Bulb Specification</span>
+            <strong className="text-slate-800 font-mono text-sm mt-0.5 block">500 Lumens / bulb</strong>
+          </div>
+        </div>
+
+        {/* Step-by-Step Resolution */}
+        <div className="space-y-3 pt-1">
+          <div className="flex justify-between items-center p-3 rounded-lg border border-slate-100 text-xs font-mono">
+            <span className="text-slate-600">1. Area in Sq. Meters: 1,200 ÷ 10.764</span>
+            <span className="font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded">111.48 m²</span>
+          </div>
+
+          <div className="flex justify-between items-center p-3 rounded-lg border border-slate-100 text-xs font-mono">
+            <span className="text-slate-600">2. Required Lumens: 40 Lux × 111.48 m²</span>
+            <span className="font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded">4,459.2 Lumens</span>
+          </div>
+
+          <div className="flex justify-between items-center p-3 rounded-lg border border-amber-200 bg-amber-50/50 text-xs font-mono">
+            <span className="text-amber-900 font-semibold">3. Bulb Quantity Needed: 4,459.2 ÷ 500</span>
+            <span className="font-bold text-amber-900 bg-amber-200/80 px-3 py-1 rounded text-sm">8.91 ≈ 9 Bulbs</span>
+          </div>
+        </div>
+
+        {/* Summary Output */}
+        <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center gap-3 text-xs sm:text-sm">
+          <CheckCircle2 size={20} className="text-amber-400 shrink-0" />
+          <span>
+            <strong>Result:</strong> A 50 ft × 24 ft laying shed requires exactly <strong className="text-amber-400">9 LED Bulbs (500 Lumens each)</strong> spaced evenly to maintain 40 Lux intensity.
+          </span>
+        </div>
+      </div>
+
     </div>
   );
 }

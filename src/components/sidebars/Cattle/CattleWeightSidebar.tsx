@@ -4,10 +4,10 @@ import {
   X,
   LogOut,
   Mail,
-  Lightbulb,
+  Scale,
   BookOpen,
-  ChevronRight,
-  HelpCircle
+  Calculator,
+  ChevronRight
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -18,11 +18,11 @@ interface SidebarProps {
   userEmail?: string;
 }
 
-export default function LayerLightingSidebar({
+export default function CattleWeightSidebar({
   isOpen,
   onClose,
   onNavigate,
-  activeId = 'lighting-calculator',
+  activeId = 'weight-measure',
   userEmail
 }: SidebarProps) {
 
@@ -43,15 +43,15 @@ export default function LayerLightingSidebar({
       {/* Sidebar Main Content */}
       <div className="relative w-70 max-w-[80vw] bg-white h-full shadow-2xl z-50 flex flex-col justify-between overflow-y-auto">
         <div>
-          {/* Header - Amber Theme */}
-          <div className="bg-amber-600 text-white p-4 flex justify-between items-center sticky top-0 z-10">
+          {/* Header - Emerald Theme */}
+          <div className="bg-emerald-800 text-white p-4 flex justify-between items-center sticky top-0 z-10">
             <div>
-              <h2 className="font-bold text-base sm:text-lg leading-tight">Lighting Estimator</h2>
-              <p className="text-[11px] text-amber-100">Layer Poultry & Lux Calculation</p>
+              <h2 className="font-bold text-base sm:text-lg leading-tight">Live Weight Tool</h2>
+              <p className="text-[11px] text-emerald-100">Cattle Weight Estimation</p>
             </div>
             <button 
               onClick={onClose} 
-              className="p-1.5 hover:bg-amber-700/80 rounded-lg transition-colors text-white/90 cursor-pointer"
+              className="p-1.5 hover:bg-emerald-700/80 rounded-lg transition-colors text-white/90 cursor-pointer"
               aria-label="Close Sidebar"
             >
               <X size={20} />
@@ -60,65 +60,62 @@ export default function LayerLightingSidebar({
 
           {/* Navigation Items */}
           <nav className="p-3 space-y-1">
-            {/* 1. Light Calculator */}
+            {/* 1. Weight Estimator */}
             <button
               onClick={() => {
-                onNavigate('lighting-calculator', 'Light Calculator');
+                onNavigate('weight-measure', 'Weight Estimator');
                 onClose();
               }}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'lighting-calculator'
-                  ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
+                activeId === 'weight-measure'
+                  ? 'bg-emerald-50 text-emerald-900 font-bold shadow-xs border-l-4 border-emerald-700'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <Lightbulb size={18} className="text-amber-600" />
-                <span>Light Calculator</span>
+                <Scale size={18} className="text-emerald-700" />
+                <span>Weight Estimator</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
-            {/* 2. Lighting Program Guide */}
+            {/* 2. Measurement Guide */}
             <button
               onClick={() => {
-                onNavigate('lighting-guide', 'Lighting Guide');
+                onNavigate('weight-guide', 'Measurement Guide');
                 onClose();
               }}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'lighting-guide'
-                  ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
+                activeId === 'weight-guide'
+                  ? 'bg-emerald-50 text-emerald-900 font-bold shadow-xs border-l-4 border-emerald-700'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <BookOpen size={18} className="text-amber-600" />
-                <span>Lighting Guide</span>
+                <BookOpen size={18} className="text-emerald-700" />
+                <span>Measurement Guide</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
-            {/* 3. Lux Formula & Standards */}
+            {/* 3. Schaeffer Formula */}
             <button
               onClick={() => {
-                onNavigate('lux-formula', 'Lux Standards');
+                onNavigate('schaeffer-formula', "Schaeffer's Formula");
                 onClose();
               }}
               className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all duration-150 cursor-pointer ${
-                activeId === 'lux-formula'
-                  ? 'bg-amber-50 text-amber-900 font-bold shadow-xs border-l-4 border-amber-600'
+                activeId === 'schaeffer-formula'
+                  ? 'bg-emerald-50 text-emerald-900 font-bold shadow-xs border-l-4 border-emerald-700'
                   : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <HelpCircle size={18} className="text-amber-600" />
-                <span>Lux Standards</span>
+                <Calculator size={18} className="text-emerald-700" />
+                <span>Schaeffer's Formula</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
-
-            {/* Information Box */}
-
           </nav>
         </div>
 
@@ -126,7 +123,7 @@ export default function LayerLightingSidebar({
         <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-3 sticky bottom-0">
           {userEmail && (
             <div className="flex items-center space-x-2.5 text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-xs">
-              <Mail size={16} className="text-amber-600 shrink-0" />
+              <Mail size={16} className="text-emerald-700 shrink-0" />
               <div className="overflow-hidden">
                 <p className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Logged In As</p>
                 <span className="font-semibold truncate text-xs text-slate-700 block mt-0.5" title={userEmail}>

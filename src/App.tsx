@@ -7,7 +7,7 @@ import Sidebar from './components/Sidebar';
 import CattleSidebar from './components/sidebars/Cattle/CattleSidebar';
 import CattleWeightSidebar from './components/sidebars/Cattle/CattleWeightSidebar';
 import NourishCattleFeedSidebar from './components/sidebars/Cattle/NourishCattleFeedSidebar';
-import LayerLightingSidebar from './components/sidebars/Poultry/LayerLightingSidebar'; // <-- ইমপোর্ট যুক্ত করা হলো
+import LayerLightingSidebar from './components/sidebars/Poultry/LayerLightingSidebar';
 
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
@@ -194,13 +194,13 @@ export default function App() {
   const renderSidebar = () => {
     // ১. Layer Lighting Calculator এবং এর সম্পর্কিত রেফারেন্স পেজগুলোর জন্য সাইডবার
     const lightingPages: PageType[] = [
-  'layer-light',
-  'lighting-calculator',
-  'lumen-reference',
-  'formula-guide',
-  'lighting-guide',
-  'lux-formula'
-];
+      'layer-light',
+      'lighting-calculator',
+      'lumen-reference',
+      'formula-guide',
+      'lighting-guide',
+      'lux-formula'
+    ];
 
     if (lightingPages.includes(currentPage)) {
       return (
@@ -208,7 +208,7 @@ export default function App() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onNavigate={handleSidebarNavigate}
-          activeId={currentPage === 'layer-light' ? 'lighting-calculator' : currentPage}
+          activeId={currentPage}
           userEmail={session?.user?.email}
         />
       );
