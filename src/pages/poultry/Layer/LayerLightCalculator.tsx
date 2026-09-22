@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Calculator, Copy, Check, Printer, RefreshCw } from 'lucide-react';
-import { LayerLightingTab } from '../../components/sidebars/Poultry/LayerLightingSidebar';
+import { LayerLightingTab } from '../../../components/sidebars/Poultry/LayerLightingSidebar';
 
 // Props Interface to solve ts(2322) error
 interface LayerLightCalculatorProps {

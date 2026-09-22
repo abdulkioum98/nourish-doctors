@@ -8,11 +8,12 @@ import CattleSidebar from './components/sidebars/Cattle/CattleSidebar';
 import CattleWeightSidebar from './components/sidebars/Cattle/CattleWeightSidebar';
 import NourishCattleFeedSidebar from './components/sidebars/Cattle/NourishCattleFeedSidebar';
 import LayerLightingSidebar from './components/sidebars/Poultry/LayerLightingSidebar';
+import PoultryUniformitySidebar, { PoultryUniformityTab } from './components/sidebars/Poultry/PoultryUniformitySidebar';
 
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
 
-// Folder-based imports
+// Folder-based imports (Cattle)
 import CattleInfoPage, { CowData } from './pages/cattle/CattleInfoPage';
 import CalculatorFattening, { FatteningCowData } from './pages/cattle/FatteningInfoPage';
 import CalculatorPage from './pages/cattle/CalculatorDairyPage';
@@ -22,14 +23,33 @@ import WeightEstimatorPage from './pages/cattle/WeightEstimatorPage';
 import MeasurementGuidePage from './pages/cattle/MeasurementGuidePage';
 import SchaefferFormulaPage from './pages/cattle/SchaefferFormulaPage';
 
+// References
 import FeedNutrientsPage from './pages/references/OtherIngredientsPage';
 import DmReferencePage from './pages/references/DmReferencePage';
 import BreedPage from './pages/references/BreedPage';
 
-import LayerLightCalculator from './pages/poultry/LayerLightCalculator';
+// Folder-based imports (Poultry)
+import LayerLightCalculator from './pages/poultry/Layer/LayerLightCalculator';
 import PoultryUniformityCalculator from './pages/poultry/PoultryUniformityCalculator';
-import LumenReferencePage from './pages/poultry/LumenReferencePage'; 
-import FormulaReferencePage from './pages/poultry/LightingFormulaReferencePage'; 
+import PoultryUniformityFormulaGuide from './pages/poultry/PoultryUniformityFormulaGuide';
+import LumenReferencePage from './pages/poultry/Layer/LumenReferencePage'; 
+import FormulaReferencePage from './pages/poultry/Layer/LightingFormulaReferencePage'; 
+import PoultrySpaceCalculator from './pages/poultry/PoultrySpaceCalculator';
+import BroilerStandard from './pages/poultry/Broiler/BroilerStandard';
+import LayerStandard from './pages/poultry/Layer/LayerStandard';
+import SonaliStandard from './pages/poultry/Sonali/SonaliStandard';
+import NourishBroilerFeeds from './pages/poultry/Broiler/NourishBroilerFeeds';
+import NourishLayerFeeds from './pages/poultry/Layer/NourishLayerFeeds';
+import NourishSonaliFeeds from './pages/poultry/Sonali/NourishSonaliFeeds';
+
+// --- Vaccination Pages ---
+import BroilerVaccination from './pages/poultry/Broiler/BroilerVaccination';
+import LayerVaccination from './pages/poultry/Layer/LayerVaccination';
+import SonaliVaccination from './pages/poultry/Sonali/SonaliVaccination';
+
+// Folder-based imports (Fish)
+import NourishFloatingFishFeeds from './pages/fish/NourishFloatingFishFeeds';
+import NourishSinkingFishFeeds from './pages/fish/NourishSinkingFishFeeds';
 
 import AdminPage from './pages/admin/AdminPage';
 import { Loader2 } from 'lucide-react';
@@ -56,17 +76,24 @@ export type PageType =
   | 'lux-formula'
   | 'poultry-space'
   | 'poultry-uniformity'
+  | 'uniformity-calculator'
+  | 'poultry-formula-guide'
   | 'layer-feeds'
   | 'broiler-feeds'
   | 'sonali-feeds'
   | 'layer-standard'
   | 'broiler-standard'
   | 'sonali-standard'
+  | 'broiler-vaccination'
+  | 'layer-vaccination'
+  | 'sonali-vaccination'
   | 'lumen-reference'
   | 'formula-guide' 
 
   // --- Fish Section ---
-  | 'fish-feed'
+  | 'nourish-floating-fish'
+  | 'nourish-sinking-fish'
+
   // --- References & Admin ---
   | 'price-list'
   | 'feed-nutrients'
@@ -92,13 +119,10 @@ export default function App() {
     return 'home';
   });
 
-  // পেজ হিস্ট্রি ট্র্যাক করার জন্য স্টেট (Back Button-এর জন্য)
   const [pageHistory, setPageHistory] = useState<PageType[]>(['home']);
-
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [refPageTitle, setRefPageTitle] = useState<string>('');
 
-  // Isolated data states
   const [dairyData, setDairyData] = useState<CowData | null>(null);
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
 
@@ -133,7 +157,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleUrlCheck);
   }, [currentPage]);
 
-  // পেজ পরিবর্তন ও হিস্ট্রি ম্যানেজমেন্ট হ্যান্ডলার
   const navigateToPage = (newPage: PageType, addToHistory = true) => {
     if (addToHistory && newPage !== currentPage) {
       setPageHistory((prev) => [...prev, currentPage]);
@@ -152,6 +175,10 @@ export default function App() {
       navigateToPage('calculator-fattening');
     } else if (id === 'lighting-calculator') {
       navigateToPage('layer-light');
+    } else if (id === 'uniformity-calculator') {
+      navigateToPage('poultry-uniformity');
+    } else if (id === 'formula-guide') {
+      navigateToPage('poultry-formula-guide');
     } else {
       setRefPageTitle(label);
       navigateToPage(id as PageType);
@@ -172,7 +199,7 @@ export default function App() {
     if (window.location.pathname !== '/') {
       window.history.pushState({}, '', '/');
     }
-    setPageHistory([]); // Clear history when going home
+    setPageHistory([]); 
     setCurrentPage('home');
   };
 
@@ -192,7 +219,36 @@ export default function App() {
 
   // --- SIDEBAR RENDER LOGIC HELPER ---
   const renderSidebar = () => {
-    // ১. Layer Lighting Calculator এবং এর সম্পর্কিত রেফারেন্স পেজগুলোর জন্য সাইডবার
+    const pagesWithoutSidebar: PageType[] = [
+      'poultry-space'
+    ];
+
+    if (pagesWithoutSidebar.includes(currentPage)) {
+      return null;
+    }
+
+    const uniformityPages: PageType[] = [
+      'poultry-uniformity',
+      'uniformity-calculator',
+      'poultry-formula-guide'
+    ];
+
+    if (uniformityPages.includes(currentPage)) {
+      return (
+        <PoultryUniformitySidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onNavigate={handleSidebarNavigate}
+          activeTab={currentPage === 'poultry-formula-guide' ? 'formula-guide' : 'uniformity-calculator'}
+          setActiveTab={(tab) => {
+            if (tab === 'formula-guide') navigateToPage('poultry-formula-guide');
+            else navigateToPage('poultry-uniformity');
+          }}
+          userEmail={session?.user?.email}
+        />
+      );
+    }
+
     const lightingPages: PageType[] = [
       'layer-light',
       'lighting-calculator',
@@ -214,7 +270,6 @@ export default function App() {
       );
     }
 
-    // ২. Live Weight Estimator, Measurement Guide, Schaeffer's Formula পেজের জন্য সাইডবার
     const weightPages: PageType[] = ['weight-measure', 'weight-guide', 'schaeffer-formula'];
 
     if (weightPages.includes(currentPage)) {
@@ -229,7 +284,6 @@ export default function App() {
       );
     }
 
-    // ৩. Nourish Cattle Feed sidebar
     if (currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') {
       return (
         <NourishCattleFeedSidebar
@@ -242,7 +296,6 @@ export default function App() {
       );
     }
 
-    // ৪. অন্যান্য ক্যাটল পেজসমূহের জন্য সাধারণ ক্যাটল সাইডবার
     const generalCattlePages: PageType[] = [
       'cattle-info',
       'calculator',
@@ -267,7 +320,6 @@ export default function App() {
       );
     }
 
-    // Main Sidebar
     return (
       <Sidebar
         isOpen={sidebarOpen}
@@ -279,7 +331,6 @@ export default function App() {
     );
   };
 
-  // --- RENDER LOADING STATE ---
   if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 text-emerald-800">
@@ -288,17 +339,14 @@ export default function App() {
     );
   }
 
-  // --- RENDER LOGIN IF NOT AUTHENTICATED ---
   if (!session) {
     return <EmailLogin onLoginSuccess={() => window.location.reload()} />;
   }
 
-  // --- RENDER MAIN APPLICATION IF LOGGED IN ---
   const isFormPage = currentPage === 'cattle-info' || currentPage === 'calculator-fattening';
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 font-sans">
-      {/* 1. Dynamic Navbar */}
       <Navbar
         currentPage={currentPage}
         onOpenSidebar={() => setSidebarOpen(true)}
@@ -306,19 +354,16 @@ export default function App() {
         onGoBack={handleGoBack}
       />
 
-      {/* 2. DYNAMIC SIDEBAR */}
       {renderSidebar()}
 
       <main className={`p-3 sm:p-5 mx-auto transition-all duration-300 ${
         isFormPage ? 'max-w-2xl' : 'w-full max-w-6xl'
       }`}>
 
-        {/* HOME / DASHBOARD PAGE */}
         {currentPage === 'home' && (
           <Dashboard onSelectPage={(pageId) => navigateToPage(pageId as PageType)} />
         )}
 
-        {/* MAIN TOGGLE (Dairy vs Fattening) */}
         {isFormPage && (
           <div className="flex bg-slate-200 p-1 rounded-xl mb-4">
             <button
@@ -346,7 +391,6 @@ export default function App() {
           </div>
         )}
         
-        {/* DAIRY INPUT FORM */}
         {currentPage === 'cattle-info' && (
           <CattleInfoPage
             initialData={dairyData}
@@ -357,7 +401,6 @@ export default function App() {
           />
         )}
 
-        {/* FATTENING INPUT FORM */}
         {currentPage === 'calculator-fattening' && (
           <CalculatorFattening
             initialData={fatteningData}
@@ -368,7 +411,6 @@ export default function App() {
           />
         )}
 
-        {/* DAIRY CALCULATOR PAGE */}
         {currentPage === 'calculator' && (
           <CalculatorPage
             cowData={dairyData}
@@ -376,7 +418,6 @@ export default function App() {
           />
         )}
 
-        {/* FATTENING CALCULATOR PAGE */}
         {currentPage === 'fatteningcalculator' && (
           <CalculatorFatteningPage
             fatteningData={fatteningData}
@@ -384,62 +425,105 @@ export default function App() {
           />
         )}
 
-        {/* NOURISH FEEDS REFERENCE PAGE */}
         {(currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') && (
           <NourishFeedPage onBack={handleBackToCalculator} />
         )}
 
-        {/* OTHER INGREDIENTS REFERENCE PAGE */}
         {(currentPage === 'feed-nutrients' || currentPage === 'other-ingredients-reference') && (
           <FeedNutrientsPage onBack={handleBackToCalculator} />
         )}
 
-        {/* DM RATIO REFERENCE PAGE */}
         {(currentPage === 'dm-reference' || currentPage === 'dm-ratio-reference') && (
           <DmReferencePage onBack={handleBackToCalculator} />
         )}
 
-        {/* HIDDEN ADMIN PAGE */}
         {currentPage === 'admin' && (
           <AdminPage onBack={handleBackToCalculator} />
         )}
 
-        {/* BREED PAGE */}
         {currentPage === 'breed-reference' && (
           <BreedPage onBack={handleBackToCalculator} />
         )}
 
-        {/* WEIGHT ESTIMATOR PAGE */}
         {currentPage === 'weight-measure' && (
           <WeightEstimatorPage onBack={handleGoBack} />
         )}
 
-        {/* LAYER LIGHT CALCULATOR PAGE */}
+        {/* --- POULTRY PAGES --- */}
         {(currentPage === 'layer-light' || currentPage === 'lighting-calculator') && (
           <LayerLightCalculator />
         )}
 
-        {/* FLOCK UNIFORMITY CALCULATOR PAGE */}
         {currentPage === 'poultry-uniformity' && (
           <PoultryUniformityCalculator />
         )}
 
-        {/* MEASUREMENT GUIDE PAGE */}
+        {currentPage === 'poultry-formula-guide' && (
+          <PoultryUniformityFormulaGuide />
+        )}
+
+        {currentPage === 'poultry-space' && (
+          <PoultrySpaceCalculator />
+        )}
+
+        {currentPage === 'broiler-standard' && (
+          <BroilerStandard />
+        )}
+
+        {currentPage === 'layer-standard' && (
+          <LayerStandard />
+        )}
+
+        {currentPage === 'sonali-standard' && (
+          <SonaliStandard />
+        )}
+
+        {currentPage === 'broiler-feeds' && (
+          <NourishBroilerFeeds />
+        )}
+
+        {currentPage === 'layer-feeds' && (
+          <NourishLayerFeeds />
+        )}
+
+        {currentPage === 'sonali-feeds' && (
+          <NourishSonaliFeeds />
+        )}
+
+        {/* --- VACCINATION PAGES --- */}
+        {currentPage === 'broiler-vaccination' && (
+          <BroilerVaccination />
+        )}
+
+        {currentPage === 'layer-vaccination' && (
+          <LayerVaccination />
+        )}
+
+        {currentPage === 'sonali-vaccination' && (
+          <SonaliVaccination />
+        )}
+
+        {/* --- FISH PAGES --- */}
+        {currentPage === 'nourish-floating-fish' && (
+          <NourishFloatingFishFeeds />
+        )}
+
+        {currentPage === 'nourish-sinking-fish' && (
+          <NourishSinkingFishFeeds />
+        )}
+
         {currentPage === 'weight-guide' && (
           <MeasurementGuidePage onBack={handleGoBack} />
         )}
 
-        {/* SCHAEFFER FORMULA PAGE */}
         {currentPage === 'schaeffer-formula' && (
           <SchaefferFormulaPage onBack={handleGoBack} />
         )}
 
-        {/* LUMEN REFERENCE PAGE */}
         {currentPage === 'lumen-reference' && (
           <LumenReferencePage onBack={handleGoBack} />
         )}
 
-        {/* FORMULA GUIDE PAGE */}
         {currentPage === 'formula-guide' && (
           <FormulaReferencePage onBack={handleGoBack} />
         )}
