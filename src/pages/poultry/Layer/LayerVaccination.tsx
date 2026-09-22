@@ -11,14 +11,37 @@ interface LayerVaccinationData {
   route: string;
 }
 
+// মেমোরি ক্যাশ ভেরিয়েবল (যাতে বারবার সুপাবেস কল না করা লাগে)
+let layerVaccinationsCache: LayerVaccinationData[] | null = null;
+
 export default function LayerVaccination() {
   const [vaccinations, setVaccinations] = useState<LayerVaccinationData[]>([]);
   const [filteredData, setFilteredData] = useState<LayerVaccinationData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  const tableName = 'layer_vaccinations';
+
   useEffect(() => {
     fetchLayerVaccinations();
+
+    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    const channel = supabase
+      .channel(`${tableName}_realtime_changes`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: tableName },
+        (payload) => {
+          console.log('Layer vaccinations updated in database, refreshing cache...', payload);
+          layerVaccinationsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
+          fetchLayerVaccinations(false); // সরাসরি নতুন ডাটা ফেচ করা হচ্ছে
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -36,17 +59,26 @@ export default function LayerVaccination() {
     }
   }, [searchTerm, vaccinations]);
 
-  const fetchLayerVaccinations = async () => {
+  const fetchLayerVaccinations = async (useCache = true) => {
+    // ১. ক্যাশে ডেটা থাকলে সেটি ব্যবহার করব, ফাস্ট হবে
+    if (useCache && layerVaccinationsCache) {
+      setVaccinations(layerVaccinationsCache);
+      setFilteredData(layerVaccinationsCache);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('layer_vaccinations')
+        .from(tableName)
         .select('*')
         .order('id', { ascending: true });
 
       if (error) {
         console.error('Error fetching layer vaccinations:', error);
       } else if (data) {
+        layerVaccinationsCache = data; // ক্যাশে সেভ করে রাখলাম
         setVaccinations(data);
         setFilteredData(data);
       }
@@ -57,7 +89,7 @@ export default function LayerVaccination() {
     }
   };
 
-  if (loading) {
+  if (loading && vaccinations.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-amber-700">
         <Loader2 className="animate-spin" size={32} />
@@ -70,7 +102,7 @@ export default function LayerVaccination() {
       {/* Header */}
       <div className="bg-gradient-to-r from-amber-700 to-amber-900 rounded-2xl p-2 text-white shadow-md flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Commercial Layer Vaccination Schedule</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Layer Vaccination Schedule</h1>
         </div>
         <div className="bg-white/10 p-3 rounded-xl">
           <ShieldCheck size={28} className="text-white" />
@@ -104,7 +136,7 @@ export default function LayerVaccination() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
               {filteredData.length > 0 ? (
-                filteredData.map((row, index) => (
+                loading ? null : filteredData.map((row, index) => (
                   <tr
                     key={row.id || index}
                     className={`${

@@ -14,6 +14,9 @@ interface LayerStandardData {
   egg_weight?: number;
 }
 
+// মেমোরি ক্যাশ ভেরিয়েবল (যাতে পেজ পরিবর্তন করে ফিরে আসলে আবার লোড না হতে হয়)
+let layerStandardsCache: LayerStandardData[] | null = null;
+
 export default function LayerStandard() {
   const [standards, setStandards] = useState<LayerStandardData[]>([]);
   const [filteredData, setFilteredData] = useState<LayerStandardData[]>([]);
@@ -21,8 +24,28 @@ export default function LayerStandard() {
   const [selectedBreed, setSelectedBreed] = useState<string>('Shaver Star Cross 579 Brown');
   const [searchWeek, setSearchWeek] = useState<string>('');
 
+  const tableName = 'layer_standards';
+
   useEffect(() => {
     fetchLayerStandards();
+
+    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    const channel = supabase
+      .channel(`${tableName}_realtime_changes`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: tableName },
+        (payload) => {
+          console.log('Layer standards updated in database, refreshing cache...', payload);
+          layerStandardsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
+          fetchLayerStandards(false); // নতুন ডাটা ফেচ করা হচ্ছে
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -35,17 +58,25 @@ export default function LayerStandard() {
     setFilteredData(result);
   }, [selectedBreed, searchWeek, standards]);
 
-  const fetchLayerStandards = async () => {
+  const fetchLayerStandards = async (useCache = true) => {
+    // ১. যদি ক্যাশে ডেটা থাকে, তবে সুপাবেস কল না করে ক্যাশ থেকেই ডেটা লোড করব (ফাস্ট হবে)
+    if (useCache && layerStandardsCache) {
+      setStandards(layerStandardsCache);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('layer_standards')
+        .from(tableName)
         .select('*')
         .order('age_weeks', { ascending: true });
 
       if (error) {
         console.error('Error fetching layer standards:', error);
       } else if (data) {
+        layerStandardsCache = data; // ক্যাশে সেভ করে রাখলাম
         setStandards(data);
       }
     } catch (err) {
@@ -55,7 +86,7 @@ export default function LayerStandard() {
     }
   };
 
-  if (loading) {
+  if (loading && standards.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-amber-700">
         <Loader2 className="animate-spin" size={32} />
@@ -68,7 +99,7 @@ export default function LayerStandard() {
       {/* Header */}
       <div className="bg-gradient-to-r from-amber-700 to-amber-900 rounded-2xl p-2 text-white shadow-md flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Commercial Layer Performance Standards</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Nourish Layer Standards</h1>
         </div>
         <div className="bg-white/10 p-3 rounded-xl">
           <BarChart3 size={28} className="text-white" />
@@ -123,7 +154,37 @@ export default function LayerStandard() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
               {filteredData.length > 0 ? (
-                filteredData.map((row, index) => (
+                loading ? null : filteredData.map((row, index) => (
+                  <tr
+                    key={row.id || index}
+                    className={`${
+                      index % 2 === 0 ? 'bg-white' : 'bg-amber-50/40'
+                    } hover:bg-amber-100/60 transition-colors`}
+                  >
+                    <td className="p-3 text-center font-bold text-amber-800">{row.age_weeks} Weeks</td>
+                    <td className="p-3 text-center">{row.daily_feed_intake ?? '-'}</td>
+                    <td className="p-3 text-center">{row.cumulative_feed ?? '-'}</td>
+                    <td className="p-3 text-center font-medium">
+                      {row.body_weight_min} {row.body_weight_max && row.body_weight_min !== row.body_weight_max ? `- ${row.body_weight_max}` : ''}
+                    </td>
+                    <td className="p-3 text-center text-emerald-700 font-semibold">
+                      {row.egg_production_pct ? `${row.egg_production_pct}%` : '-'}
+                    </td>
+                    <td className="p-3 text-center">{row.egg_weight ? `${row.egg_weight}g` : '-'}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="text-center p-6 text-slate-400">
+                    No Data Available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            
+            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
+              {filteredData.length > 0 ? (
+                loading ? null : filteredData.map((row, index) => (
                   <tr
                     key={row.id || index}
                     className={`${

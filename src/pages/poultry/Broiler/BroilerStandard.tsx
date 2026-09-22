@@ -10,14 +10,37 @@ interface BroilerData {
   fcr: number;
 }
 
+// মেমোরি ক্যাশ ভেরিয়েবল (যাতে বারবার সুপাবেস কল না করা লাগে)
+let broilerStandardsCache: BroilerData[] | null = null;
+
 export default function BroilerStandard() {
   const [standards, setStandards] = useState<BroilerData[]>([]);
   const [filteredStandards, setFilteredStandards] = useState<BroilerData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchDay, setSearchDay] = useState<string>('');
 
+  const tableName = 'broiler_standards';
+
   useEffect(() => {
     fetchBroilerStandards();
+
+    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    const channel = supabase
+      .channel(`${tableName}_realtime_changes`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: tableName },
+        (payload) => {
+          console.log('Broiler standards updated in database, refreshing cache...', payload);
+          broilerStandardsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
+          fetchBroilerStandards(false); // সরাসরি নতুন ডাটা ফেচ করা হচ্ছে
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -31,17 +54,26 @@ export default function BroilerStandard() {
     }
   }, [searchDay, standards]);
 
-  const fetchBroilerStandards = async () => {
+  const fetchBroilerStandards = async (useCache = true) => {
+    // ১. ক্যাশে ডেটা থাকলে সেটি ব্যবহার করব, ফাস্ট হবে
+    if (useCache && broilerStandardsCache) {
+      setStandards(broilerStandardsCache);
+      setFilteredStandards(broilerStandardsCache);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('broiler_standards')
+        .from(tableName)
         .select('*')
         .order('day', { ascending: true });
 
       if (error) {
         console.error('Error fetching broiler standards:', error);
       } else if (data) {
+        broilerStandardsCache = data; // ক্যাশে সেভ করে রাখলাম
         setStandards(data);
         setFilteredStandards(data);
       }
@@ -52,7 +84,7 @@ export default function BroilerStandard() {
     }
   };
 
-  if (loading) {
+  if (loading && standards.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-amber-700">
         <Loader2 className="animate-spin" size={32} />
@@ -98,7 +130,7 @@ export default function BroilerStandard() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
               {filteredStandards.length > 0 ? (
-                filteredStandards.map((row, index) => (
+                loading ? null : filteredStandards.map((row, index) => (
                   <tr
                     key={row.id || index}
                     className={`${

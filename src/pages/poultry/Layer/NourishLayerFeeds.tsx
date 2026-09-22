@@ -18,14 +18,37 @@ interface LayerFeedData {
   price?: number;
 }
 
+// মেমোরি ক্যাশ ভেরিয়েবল (যাতে বারবার সুপাবেস কল করা না লাগে)
+let layerFeedsCache: LayerFeedData[] | null = null;
+
 export default function LayerFeed() {
   const [feeds, setFeeds] = useState<LayerFeedData[]>([]);
   const [filteredFeeds, setFilteredFeeds] = useState<LayerFeedData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  const tableName = 'layer_feeds';
+
   useEffect(() => {
     fetchLayerFeeds();
+
+    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    const channel = supabase
+      .channel(`${tableName}_realtime_changes`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: tableName },
+        (payload) => {
+          console.log('Layer feeds updated in database, refreshing cache...', payload);
+          layerFeedsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
+          fetchLayerFeeds(false); // সরাসরি নতুন ডাটা ফেচ করা হচ্ছে
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -35,17 +58,26 @@ export default function LayerFeed() {
     setFilteredFeeds(result);
   }, [searchTerm, feeds]);
 
-  const fetchLayerFeeds = async () => {
+  const fetchLayerFeeds = async (useCache = true) => {
+    // ১. ক্যাশে ডেটা থাকলে সেটি ব্যবহার করব, ফাস্ট হবে
+    if (useCache && layerFeedsCache) {
+      setFeeds(layerFeedsCache);
+      setFilteredFeeds(layerFeedsCache);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('layer_feeds')
+        .from(tableName)
         .select('*')
         .order('id', { ascending: true });
 
       if (error) {
         console.error('Error fetching layer feeds:', error);
       } else if (data) {
+        layerFeedsCache = data; // ক্যাশে সেভ করে রাখলাম
         setFeeds(data);
         setFilteredFeeds(data);
       }
@@ -56,7 +88,7 @@ export default function LayerFeed() {
     }
   };
 
-  if (loading) {
+  if (loading && feeds.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-amber-700">
         <Loader2 className="animate-spin" size={32} />
@@ -76,7 +108,19 @@ export default function LayerFeed() {
         </div>
       </div>
 
-      
+      {/* Search Bar */}
+      <div className="flex justify-between bg-white p-4 rounded-2xl border border-amber-100 shadow-sm">
+        <div className="flex items-center bg-white border border-amber-200 rounded-xl px-4 py-2 shadow-sm w-full sm:w-80">
+          <Search size={18} className="text-amber-600 mr-2 shrink-0" />
+          <input
+            type="text"
+            placeholder="Search feed name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-transparent text-sm text-slate-700 focus:outline-none"
+          />
+        </div>
+      </div>
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
@@ -100,7 +144,7 @@ export default function LayerFeed() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
               {filteredFeeds.length > 0 ? (
-                filteredFeeds.map((row, index) => (
+                loading ? null : filteredFeeds.map((row, index) => (
                   <tr
                     key={row.id || index}
                     className={`${

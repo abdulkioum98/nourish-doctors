@@ -18,14 +18,37 @@ interface BroilerFeedData {
   price?: number;
 }
 
+// মেমোরি ক্যাশ ভেরিয়েবল (যাতে বারবার সুপাবেস কল করা না লাগে)
+let broilerFeedsCache: BroilerFeedData[] | null = null;
+
 export default function BroilerFeed() {
   const [feeds, setFeeds] = useState<BroilerFeedData[]>([]);
   const [filteredFeeds, setFilteredFeeds] = useState<BroilerFeedData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  const tableName = 'broiler_feeds';
+
   useEffect(() => {
     fetchBroilerFeeds();
+
+    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    const channel = supabase
+      .channel(`${tableName}_realtime_changes`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: tableName },
+        (payload) => {
+          console.log('Broiler feeds updated in database, refreshing cache...', payload);
+          broilerFeedsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
+          fetchBroilerFeeds(false); // সরাসরি নতুন ডাটা ফেচ করা হচ্ছে
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -35,17 +58,26 @@ export default function BroilerFeed() {
     setFilteredFeeds(result);
   }, [searchTerm, feeds]);
 
-  const fetchBroilerFeeds = async () => {
+  const fetchBroilerFeeds = async (useCache = true) => {
+    // ১. ক্যাশে ডেটা থাকলে সেটি ব্যবহার করব, ফাস্ট হবে
+    if (useCache && broilerFeedsCache) {
+      setFeeds(broilerFeedsCache);
+      setFilteredFeeds(broilerFeedsCache);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('broiler_feeds')
+        .from(tableName)
         .select('*')
         .order('id', { ascending: true });
 
       if (error) {
         console.error('Error fetching broiler feeds:', error);
       } else if (data) {
+        broilerFeedsCache = data; // ক্যাশে সেভ করে রাখলাম
         setFeeds(data);
         setFilteredFeeds(data);
       }
@@ -56,7 +88,7 @@ export default function BroilerFeed() {
     }
   };
 
-  if (loading) {
+  if (loading && feeds.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-amber-700">
         <Loader2 className="animate-spin" size={32} />
@@ -67,10 +99,9 @@ export default function BroilerFeed() {
   return (
     <div className="max-w-7xl mx-auto p-4 space-y-6 font-sans">
       {/* Header */}
-      <div className="bg-gradient-to-r from-amber-700 to-amber-900 rounded-2xl p-6 text-white shadow-md flex items-center justify-between">
+      <div className="bg-gradient-to-r from-amber-700 to-amber-900 rounded-2xl p-2 text-white shadow-md flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Broiler Feed Specifications</h1>
-          <p className="text-amber-100 text-xs sm:text-sm mt-1">Nutrient standards, feed forms, and pricing for broiler feeds</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Nourish Broiler Feeds</h1>
         </div>
         <div className="bg-white/10 p-3 rounded-xl">
           <Package size={28} className="text-white" />
@@ -113,7 +144,7 @@ export default function BroilerFeed() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
               {filteredFeeds.length > 0 ? (
-                filteredFeeds.map((row, index) => (
+                loading ? null : filteredFeeds.map((row, index) => (
                   <tr
                     key={row.id || index}
                     className={`${

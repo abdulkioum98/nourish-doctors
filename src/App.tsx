@@ -123,6 +123,15 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [refPageTitle, setRefPageTitle] = useState<string>('');
 
+  // Dashboard Scroll & Accordion State Preservation
+  const [scrollPosition, setScrollPosition] = useState<number>(0);
+  const [activeDropdowns, setActiveDropdowns] = useState({
+    standards: false,
+    vaccination: false,
+    feeds: false,
+    fish: false,
+  });
+
   const [dairyData, setDairyData] = useState<CowData | null>(null);
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
 
@@ -139,6 +148,13 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Restore scroll position when returning to home/dashboard
+  useEffect(() => {
+    if (currentPage === 'home') {
+      window.scrollTo(0, scrollPosition);
+    }
+  }, [currentPage, scrollPosition]);
 
   // 2. Browser Navigation Sync
   useEffect(() => {
@@ -158,6 +174,9 @@ export default function App() {
   }, [currentPage]);
 
   const navigateToPage = (newPage: PageType, addToHistory = true) => {
+    if (currentPage === 'home') {
+      setScrollPosition(window.scrollY);
+    }
     if (addToHistory && newPage !== currentPage) {
       setPageHistory((prev) => [...prev, currentPage]);
     }
@@ -361,7 +380,11 @@ export default function App() {
       }`}>
 
         {currentPage === 'home' && (
-          <Dashboard onSelectPage={(pageId) => navigateToPage(pageId as PageType)} />
+          <Dashboard 
+            onSelectPage={(pageId) => navigateToPage(pageId as PageType)}
+            activeDropdowns={activeDropdowns}
+            setActiveDropdowns={setActiveDropdowns}
+          />
         )}
 
         {isFormPage && (

@@ -15,14 +15,25 @@ import {
 } from 'lucide-react';
 
 interface DashboardProps {
-  onSelectPage: (pageId: string) => void;
+  onSelectPage: (pageId: string, dropdowns: any) => void;
+  activeDropdowns: {
+    standards: boolean;
+    vaccination: boolean;
+    feeds: boolean;
+    fish: boolean;
+  };
+  setActiveDropdowns: React.Dispatch<React.SetStateAction<any>>;
 }
 
-export default function Dashboard({ onSelectPage }: DashboardProps) {
-  const [standardsOpen, setStandardsOpen] = useState(false);
-  const [vaccinationOpen, setVaccinationOpen] = useState(false);
-  const [feedsOpen, setFeedsOpen] = useState(false);
-  const [fishDropdownOpen, setFishDropdownOpen] = useState(false);
+export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDropdowns }: DashboardProps) {
+  
+  // ড্রপডাউন টগল করার সময় স্টেট আপডেট করা যাতে ব্যাক করলে বন্ধ না হয়ে যায়
+  const toggleDropdown = (key: string) => {
+    setActiveDropdowns((prev: any) => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   // Cattle Tools
   const cattleServices = [
@@ -38,28 +49,24 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
     { id: 'poultry-space', title: 'Poultry Space Calculator', icon: <Ruler className="text-amber-700" size={20} />, active: true },
   ];
 
-  // Sub-options for Standards
   const standardSubItems = [
     { id: 'broiler-standard', title: 'Broiler Standard' },
     { id: 'layer-standard', title: 'Layer Standard' },
     { id: 'sonali-standard', title: 'Sonali Standard' },
   ];
 
-  // Sub-options for Vaccination Schedule
   const vaccinationSubItems = [
     { id: 'broiler-vaccination', title: 'Broiler Vaccination' },
     { id: 'layer-vaccination', title: 'Layer Vaccination' },
     { id: 'sonali-vaccination', title: 'Sonali Vaccination' },
   ];
 
-  // Sub-options for Feeds
   const feedSubItems = [
     { id: 'broiler-feeds', title: 'Broiler Feeds' },
     { id: 'layer-feeds', title: 'Layer Feeds' },
     { id: 'sonali-feeds', title: 'Sonali Feeds' },
   ];
 
-  // Sub-options for Fish Feeds
   const fishSubItems = [
     { id: 'nourish-floating-fish', title: 'Floating Fish Feeds' },
     { id: 'nourish-sinking-fish', title: 'Sinking Fish Feeds' },
@@ -69,7 +76,7 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
     <div className="min-h-screen py-6 px-4 flex flex-col items-center font-sans">
       <div className="w-full max-w-md space-y-8">
       
-        {/* 1. CATTLE SECTION */}
+        {/* ১. CATTLE SECTION */}
         <section className="space-y-3">
           <div className="flex items-center justify-center space-x-2">
             <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
@@ -84,7 +91,7 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
               <button
                 key={item.id}
                 disabled={!item.active}
-                onClick={() => item.active && onSelectPage(item.id)}
+                onClick={() => item.active && onSelectPage(item.id, activeDropdowns)}
                 className={`w-full p-3.5 rounded-xl border flex items-center justify-between transition-all duration-200 ${
                   item.active
                     ? 'bg-gradient-to-r from-emerald-50/80 to-teal-50/50 border-emerald-200/80 shadow-sm hover:shadow-md hover:border-emerald-500 cursor-pointer group'
@@ -118,7 +125,7 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
           </div>
         </section>
 
-        {/* 2. POULTRY SECTION */}
+        {/* ২. POULTRY SECTION */}
         <section className="space-y-3">
           <div className="flex items-center justify-center space-x-2">
             <span className="h-2 w-2 rounded-full bg-amber-500"></span>
@@ -132,7 +139,7 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
             {poultryMainServices.map((item) => (
               <button
                 key={item.id}
-                onClick={() => onSelectPage(item.id)}
+                onClick={() => onSelectPage(item.id, activeDropdowns)}
                 className="w-full p-3.5 rounded-xl border bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm hover:shadow-md hover:border-amber-500 cursor-pointer flex items-center justify-between transition-all duration-200 group"
               >
                 <div className="flex items-center space-x-3.5">
@@ -151,10 +158,10 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
 
             {/* Poultry Standards Accordion */}
             <div className={`w-full rounded-xl border transition-all duration-300 overflow-hidden ${
-              standardsOpen ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
+              activeDropdowns.standards ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
             }`}>
               <button
-                onClick={() => setStandardsOpen(!standardsOpen)}
+                onClick={() => toggleDropdown('standards')}
                 className="w-full p-3.5 flex items-center justify-between cursor-pointer group"
               >
                 <div className="flex items-center space-x-3.5">
@@ -166,18 +173,18 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
                   </span>
                 </div>
                 <div className={`p-1 rounded-full transition-transform duration-300 ${
-                  standardsOpen ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
+                  activeDropdowns.standards ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
                 }`}>
                   <ChevronDown size={16} />
                 </div>
               </button>
 
-              {standardsOpen && (
+              {activeDropdowns.standards && (
                 <div className="px-3 pb-3 pt-1 space-y-2 animate-fadeIn">
                   {standardSubItems.map((sub) => (
                     <button
                       key={sub.id}
-                      onClick={() => onSelectPage(sub.id)}
+                      onClick={() => onSelectPage(sub.id, activeDropdowns)}
                       className="w-full py-2.5 px-3 pl-11 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-amber-100 hover:text-amber-900 border border-amber-200/60 flex items-center justify-between transition-all cursor-pointer shadow-2xs"
                     >
                       <span>{sub.title}</span>
@@ -190,10 +197,10 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
 
             {/* Vaccination Schedule Accordion */}
             <div className={`w-full rounded-xl border transition-all duration-300 overflow-hidden ${
-              vaccinationOpen ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
+              activeDropdowns.vaccination ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
             }`}>
               <button
-                onClick={() => setVaccinationOpen(!vaccinationOpen)}
+                onClick={() => toggleDropdown('vaccination')}
                 className="w-full p-3.5 flex items-center justify-between cursor-pointer group"
               >
                 <div className="flex items-center space-x-3.5">
@@ -205,18 +212,18 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
                   </span>
                 </div>
                 <div className={`p-1 rounded-full transition-transform duration-300 ${
-                  vaccinationOpen ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
+                  activeDropdowns.vaccination ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
                 }`}>
                   <ChevronDown size={16} />
                 </div>
               </button>
 
-              {vaccinationOpen && (
+              {activeDropdowns.vaccination && (
                 <div className="px-3 pb-3 pt-1 space-y-2 animate-fadeIn">
                   {vaccinationSubItems.map((sub) => (
                     <button
                       key={sub.id}
-                      onClick={() => onSelectPage(sub.id)}
+                      onClick={() => onSelectPage(sub.id, activeDropdowns)}
                       className="w-full py-2.5 px-3 pl-11 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-amber-100 hover:text-amber-900 border border-amber-200/60 flex items-center justify-between transition-all cursor-pointer shadow-2xs"
                     >
                       <span>{sub.title}</span>
@@ -229,10 +236,10 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
 
             {/* Nourish Poultry Feeds Accordion */}
             <div className={`w-full rounded-xl border transition-all duration-300 overflow-hidden ${
-              feedsOpen ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
+              activeDropdowns.feeds ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
             }`}>
               <button
-                onClick={() => setFeedsOpen(!feedsOpen)}
+                onClick={() => toggleDropdown('feeds')}
                 className="w-full p-3.5 flex items-center justify-between cursor-pointer group"
               >
                 <div className="flex items-center space-x-3.5">
@@ -244,18 +251,18 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
                   </span>
                 </div>
                 <div className={`p-1 rounded-full transition-transform duration-300 ${
-                  feedsOpen ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
+                  activeDropdowns.feeds ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
                 }`}>
                   <ChevronDown size={16} />
                 </div>
               </button>
 
-              {feedsOpen && (
+              {activeDropdowns.feeds && (
                 <div className="px-3 pb-3 pt-1 space-y-2 animate-fadeIn">
                   {feedSubItems.map((sub) => (
                     <button
                       key={sub.id}
-                      onClick={() => onSelectPage(sub.id)}
+                      onClick={() => onSelectPage(sub.id, activeDropdowns)}
                       className="w-full py-2.5 px-3 pl-11 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-amber-100 hover:text-amber-900 border border-amber-200/60 flex items-center justify-between transition-all cursor-pointer shadow-2xs"
                     >
                       <span>{sub.title}</span>
@@ -269,7 +276,7 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
           </div>
         </section>
 
-        {/* 3. FISH / AQUA SECTION */}
+        {/* ৩. FISH / AQUA SECTION */}
         <section className="space-y-3">
           <div className="flex items-center justify-center space-x-2">
             <span className="h-2 w-2 rounded-full bg-cyan-600"></span>
@@ -280,12 +287,11 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
           </div>
 
           <div className="flex flex-col space-y-2.5">
-            {/* Nourish Fish Feeds Accordion */}
             <div className={`w-full rounded-xl border transition-all duration-300 overflow-hidden ${
-              fishDropdownOpen ? 'bg-cyan-50/90 border-cyan-400 shadow-md' : 'bg-gradient-to-r from-cyan-50/80 to-sky-50/50 border-cyan-200/80 shadow-sm'
+              activeDropdowns.fish ? 'bg-cyan-50/90 border-cyan-400 shadow-md' : 'bg-gradient-to-r from-cyan-50/80 to-sky-50/50 border-cyan-200/80 shadow-sm'
             }`}>
               <button
-                onClick={() => setFishDropdownOpen(!fishDropdownOpen)}
+                onClick={() => toggleDropdown('fish')}
                 className="w-full p-3.5 flex items-center justify-between cursor-pointer group"
               >
                 <div className="flex items-center space-x-3.5">
@@ -297,18 +303,18 @@ export default function Dashboard({ onSelectPage }: DashboardProps) {
                   </span>
                 </div>
                 <div className={`p-1 rounded-full transition-transform duration-300 ${
-                  fishDropdownOpen ? 'bg-cyan-700 text-white rotate-180' : 'bg-white/80 text-cyan-700 group-hover:bg-cyan-700 group-hover:text-white shadow-xs'
+                  activeDropdowns.fish ? 'bg-cyan-700 text-white rotate-180' : 'bg-white/80 text-cyan-700 group-hover:bg-cyan-700 group-hover:text-white shadow-xs'
                 }`}>
                   <ChevronDown size={16} />
                 </div>
               </button>
 
-              {fishDropdownOpen && (
+              {activeDropdowns.fish && (
                 <div className="px-3 pb-3 pt-1 space-y-2 animate-fadeIn">
                   {fishSubItems.map((sub) => (
                     <button
                       key={sub.id}
-                      onClick={() => onSelectPage(sub.id)}
+                      onClick={() => onSelectPage(sub.id, activeDropdowns)}
                       className="w-full py-2.5 px-3 pl-11 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-cyan-100 hover:text-cyan-900 border border-cyan-200/60 flex items-center justify-between transition-all cursor-pointer shadow-2xs"
                     >
                       <span>{sub.title}</span>
