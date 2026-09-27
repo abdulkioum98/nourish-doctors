@@ -23,6 +23,7 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate?: (id: LayerLightingTab, label: string) => void;
+  activeId?: string;
   activeTab?: LayerLightingTab;
   setActiveTab?: (tab: LayerLightingTab) => void;
   userEmail?: string;
@@ -37,8 +38,19 @@ export default function LayerLightingSidebar({
   userEmail
 }: SidebarProps) {
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+      if (userEmail) {
+        await supabase
+          .from('user_logs')
+          .update({
+            is_logged_in: false,
+            logout_time: new Date().toISOString(),
+          })
+          .eq('user_email', userEmail);
+      }
+  
+      await supabase.auth.signOut();
+      window.location.reload();
+    };
 
   const handleTabClick = (id: LayerLightingTab, label: string) => {
     if (setActiveTab) setActiveTab(id);

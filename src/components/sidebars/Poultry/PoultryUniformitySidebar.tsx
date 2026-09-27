@@ -32,8 +32,19 @@ export default function PoultryUniformitySidebar({
   userEmail
 }: UniformitySidebarProps) {
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+      if (userEmail) {
+        await supabase
+          .from('user_logs')
+          .update({
+            is_logged_in: false,
+            logout_time: new Date().toISOString(),
+          })
+          .eq('user_email', userEmail);
+      }
+  
+      await supabase.auth.signOut();
+      window.location.reload();
+    };
 
   const handleTabClick = (id: PoultryUniformityTab, label: string) => {
     if (setActiveTab) setActiveTab(id);

@@ -1,7 +1,11 @@
 import React from 'react';
 import { BookOpen, Calculator, CheckCircle2, Lightbulb, Layers, Ruler, ArrowRight } from 'lucide-react';
 
-export default function FormulaReferencePage() {
+interface FormulaReferencePageProps {
+  onBack?: () => void;
+}
+
+export default function FormulaReferencePage({ onBack }: FormulaReferencePageProps) {
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12 font-sans text-slate-800">
       

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Zap, CheckCircle2, Info } from 'lucide-react';
+import { Search, Zap, CheckCircle2, ArrowLeft } from 'lucide-react';
 
 interface BrandLumenData {
   brand: string;
@@ -10,6 +10,11 @@ interface BrandLumenData {
   w15: number | null;
   w18: number | null;
   avgEfficacy: string;
+}
+
+// onBack 
+interface LumenReferencePageProps {
+  onBack?: () => void;
 }
 
 const BULB_MATRIX_DATABASE: BrandLumenData[] = [
@@ -31,7 +36,7 @@ const BULB_MATRIX_DATABASE: BrandLumenData[] = [
   { brand: 'Non-Brand / Local', w5: 350, w7: 490, w9: 630, w12: 840, w15: 1050, w18: 1260, avgEfficacy: '70 - 80 lm/W' },
 ];
 
-export default function LumenReferencePage() {
+export default function LumenReferencePage({ onBack }: LumenReferencePageProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredBrands = BULB_MATRIX_DATABASE.filter((item) =>
@@ -41,11 +46,19 @@ export default function LumenReferencePage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-600 to-amber-500 text-white p-5 sm:p-6 rounded-3xl shadow-md">
+      <div className="bg-gradient-to-r from-amber-600 to-amber-500 text-white p-5 sm:p-6 rounded-3xl shadow-md flex justify-between items-center">
         <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
           <Zap className="text-amber-200 fill-amber-200" size={24} /> 
           Bangladesh LED Bulb Lumen Reference
         </h1>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all"
+          >
+            <ArrowLeft size={16} /> Back
+          </button>
+        )}
       </div>
 
       {/* Search Bar & Quick Info */}
@@ -60,8 +73,7 @@ export default function LumenReferencePage() {
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
         </div>
-
-        </div>
+      </div>
 
       {/* Table Section */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -96,7 +108,6 @@ export default function LumenReferencePage() {
                       key={index}
                       className={`hover:bg-amber-50/50 transition-colors ${cellBgClass}`}
                     >
-                      {/* Sticky Brand Name Cell with Solid Background & Right Shadow */}
                       <td className={`py-3 px-4 font-bold text-slate-800 sticky left-0 z-10 whitespace-nowrap ${cellBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]`}>
                         {isNonBrand ? (
                           <span className="text-rose-600 font-bold">{row.brand}</span>
@@ -105,7 +116,6 @@ export default function LumenReferencePage() {
                         )}
                       </td>
 
-                      {/* Watts Columns */}
                       <td className="py-3 px-3 text-center text-amber-700 font-bold bg-amber-50/30">
                         {row.w5 ? `${row.w5} lm` : '-'}
                       </td>
@@ -125,7 +135,6 @@ export default function LumenReferencePage() {
                         {row.w18 ? `${row.w18} lm` : '-'}
                       </td>
 
-                      {/* Efficacy */}
                       <td className="py-3 px-4 text-right text-slate-500 font-semibold whitespace-nowrap">
                         <span className="bg-amber-50 text-amber-800 border border-amber-200/60 px-2 py-0.5 rounded-md text-[11px]">
                           {row.avgEfficacy}

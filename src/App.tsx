@@ -8,10 +8,11 @@ import CattleSidebar from './components/sidebars/Cattle/CattleSidebar';
 import CattleWeightSidebar from './components/sidebars/Cattle/CattleWeightSidebar';
 import NourishCattleFeedSidebar from './components/sidebars/Cattle/NourishCattleFeedSidebar';
 import LayerLightingSidebar from './components/sidebars/Poultry/LayerLightingSidebar';
-import PoultryUniformitySidebar, { PoultryUniformityTab } from './components/sidebars/Poultry/PoultryUniformitySidebar';
+import PoultryUniformitySidebar from './components/sidebars/Poultry/PoultryUniformitySidebar';
 
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
+import UserInfoPage from './components/UserInfoPage';
 
 // Folder-based imports (Cattle)
 import CattleInfoPage, { CowData } from './pages/cattle/CattleInfoPage';
@@ -101,7 +102,8 @@ export type PageType =
   | 'dm-reference'
   | 'dm-ratio-reference'
   | 'breed-reference'
-  | 'admin';
+  | 'admin'
+  | 'user-info';
 
 export default function App() {
   // --- AUTHENTICATION STATES ---
@@ -121,7 +123,7 @@ export default function App() {
 
   const [pageHistory, setPageHistory] = useState<PageType[]>(['home']);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [refPageTitle, setRefPageTitle] = useState<string>('');
+  const [, setRefPageTitle] = useState<string>('');
 
   // Dashboard Scroll & Accordion State Preservation
   const [scrollPosition, setScrollPosition] = useState<number>(0);
@@ -135,15 +137,39 @@ export default function App() {
   const [dairyData, setDairyData] = useState<CowData | null>(null);
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
 
-  // 1. SUPABASE AUTH SESSION CHECK
+  // Helper function to update user online status in database
+  const updateUserOnlineStatus = async (email: string) => {
+    await supabase
+      .from('user_logs')
+      .upsert(
+        [
+          {
+            user_email: email,
+            is_logged_in: true,
+            login_time: new Date().toISOString(),
+          },
+        ],
+        { onConflict: 'user_email' }
+      );
+  };
+
+  // 1. SUPABASE AUTH SESSION CHECK & AUTO ONLINE SYNC
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setCheckingAuth(false);
+      
+      // ইউজার সাইটে প্রবেশ করলেই বা রিফ্রেশ দিলেই ডাটাবেজে Online হয়ে যাবে
+      if (session?.user?.email) {
+        updateUserOnlineStatus(session.user.email);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user?.email) {
+        updateUserOnlineStatus(session.user.email);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -220,20 +246,6 @@ export default function App() {
     }
     setPageHistory([]); 
     setCurrentPage('home');
-  };
-
-  const handleBackToCalculator = () => {
-    if (window.location.pathname !== '/') {
-      window.history.pushState({}, '', '/');
-    }
-
-    if (currentPage === 'fatteningcalculator' || fatteningData) {
-      navigateToPage('fatteningcalculator');
-    } else if (dairyData) {
-      navigateToPage('calculator');
-    } else {
-      navigateToPage('cattle-info');
-    }
   };
 
   // --- SIDEBAR RENDER LOGIC HELPER ---
@@ -449,23 +461,23 @@ export default function App() {
         )}
 
         {(currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') && (
-          <NourishFeedPage onBack={handleBackToCalculator} />
+          <NourishFeedPage onBack={() => navigateToPage('calculator')} />
         )}
 
         {(currentPage === 'feed-nutrients' || currentPage === 'other-ingredients-reference') && (
-          <FeedNutrientsPage onBack={handleBackToCalculator} />
+          <FeedNutrientsPage onBack={() => navigateToPage('calculator')} />
         )}
 
         {(currentPage === 'dm-reference' || currentPage === 'dm-ratio-reference') && (
-          <DmReferencePage onBack={handleBackToCalculator} />
+          <DmReferencePage onBack={() => navigateToPage('calculator')} />
         )}
 
         {currentPage === 'admin' && (
-          <AdminPage onBack={handleBackToCalculator} />
+          <AdminPage onBack={() => navigateToPage('calculator')} />
         )}
 
         {currentPage === 'breed-reference' && (
-          <BreedPage onBack={handleBackToCalculator} />
+          <BreedPage onBack={() => navigateToPage('calculator')} />
         )}
 
         {currentPage === 'weight-measure' && (
@@ -549,6 +561,10 @@ export default function App() {
 
         {currentPage === 'formula-guide' && (
           <FormulaReferencePage onBack={handleGoBack} />
+        )}
+        
+        {currentPage === 'user-info' && (
+          <UserInfoPage session={session} />
         )}
 
       </main>

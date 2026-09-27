@@ -28,8 +28,19 @@ export default function NourishCattleFeedSidebar({
 }: SidebarProps) {
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+      if (userEmail) {
+        await supabase
+          .from('user_logs')
+          .update({
+            is_logged_in: false,
+            logout_time: new Date().toISOString(),
+          })
+          .eq('user_email', userEmail);
+      }
+  
+      await supabase.auth.signOut();
+      window.location.reload();
+    };
 
   if (!isOpen) return null;
 

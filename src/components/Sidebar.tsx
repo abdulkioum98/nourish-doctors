@@ -6,7 +6,7 @@ import {
   Mail,
   Home,
   ShieldAlert,
-  UserCheck
+  Users
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,7 +26,44 @@ export default function Sidebar({
 }: SidebarProps) {
 
   const handleLogout = async () => {
+    if (userEmail) {
+      const { data: activeLogs } = await supabase
+        .from('user_logs')
+        .select('id, login_time')
+        .eq('user_email', userEmail)
+        .eq('is_logged_in', true)
+        .order('login_time', { ascending: false })
+        .limit(1);
+
+      if (activeLogs && activeLogs.length > 0) {
+        const log = activeLogs[0];
+        const loginTime = new Date(log.login_time).getTime();
+        const logoutTime = new Date().getTime();
+        
+        const diffMinutes = Math.floor((logoutTime - loginTime) / (1000 * 60));
+        const finalMinutes = diffMinutes > 0 ? diffMinutes : 1; 
+
+        await supabase
+          .from('user_logs')
+          .update({
+            is_logged_in: false,
+            logout_time: new Date().toISOString(),
+            session_duration_minutes: finalMinutes,
+          })
+          .eq('id', log.id);
+      } else {
+        await supabase
+          .from('user_logs')
+          .update({
+            is_logged_in: false,
+            logout_time: new Date().toISOString(),
+          })
+          .eq('user_email', userEmail);
+      }
+    }
+
     await supabase.auth.signOut();
+    window.location.reload();
   };
 
   if (!isOpen) return null;
@@ -85,6 +122,24 @@ export default function Sidebar({
               >
                 <ShieldAlert size={18} className="text-emerald-700" />
                 <span>Admin Portal</span>
+              </button>
+            )}
+
+            {/* User Info Option - Only visible for abdulkioum98@gmail.com */}
+            {userEmail === 'abdulkioum98@gmail.com' && (
+              <button
+                onClick={() => {
+                  onNavigate('user-info', 'User Info');
+                  onClose();
+                }}
+                className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all duration-150 ${
+                  activeId === 'user-info'
+                    ? 'bg-amber-50 text-amber-800 font-bold shadow-xs border-l-4 border-amber-600'
+                    : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <Users size={18} className="text-amber-700" />
+                <span>User Info</span>
               </button>
             )}
 

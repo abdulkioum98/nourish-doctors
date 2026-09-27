@@ -13,7 +13,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // ✅ Send OTP
+  // Send OTP
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -22,7 +22,7 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
     const formattedEmail = email.trim().toLowerCase();
 
     try {
-      // ১. Whitelist Check
+      // 1. Whitelist Check
       const { data: allowed, error: dbError } = await supabase
         .from('allowed_emails')
         .select('email')
@@ -41,11 +41,11 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
         return;
       }
 
-      // ২. Send OTP with dynamic signup allowed
+      // 2. Send OTP with dynamic signup allowed
       const { error } = await supabase.auth.signInWithOtp({
         email: formattedEmail,
         options: {
-          shouldCreateUser: true, // ✅ নতুন অথবা পুরাতন দুই ইউজারের জন্যই OTP নিশ্চিত করবে
+          shouldCreateUser: true,
         },
       });
 
@@ -61,14 +61,16 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
     }
   };
 
-  // ✅ Verify OTP
+  // Verify OTP & Save to user_logs with Device Info
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
 
+    const targetEmail = email.trim().toLowerCase();
+
     const { data, error } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
+      email: targetEmail,
       token: otp.trim(),
       type: 'email',
     });
@@ -77,6 +79,24 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
       setErrorMsg('Invalid Code! Please check your email and try again.');
       setLoading(false);
     } else if (data.session) {
+      const deviceInfo = navigator.userAgent;
+
+      const { error: logError } = await supabase.from('user_logs').insert([
+        {
+          user_email: targetEmail,
+          otp_status: 'Verified',
+          is_logged_in: true,
+          login_time: new Date().toISOString(),
+          session_duration_minutes: 0,
+          device_info: deviceInfo, 
+        },
+      ]);
+
+      if (logError) {
+        console.error('Failed to save user log:', logError.message);
+      }
+
+      setLoading(false);
       onLoginSuccess();
     }
   };
