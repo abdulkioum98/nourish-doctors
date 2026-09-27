@@ -159,7 +159,7 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
 
         <div className="relative z-10">
           <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-indigo-100 to-indigo-300 bg-clip-text text-transparent drop-shadow-sm">
-            User Activity & Real-time Multi-Device Management
+            User Activity
           </h1>
         </div>
         
@@ -176,7 +176,6 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="bg-slate-50/80 text-slate-600 border-b border-slate-100 uppercase text-xs tracking-wider">
-                  {/* ১ম ও ২য় কলামে whitespace-nowrap দেওয়া হয়েছে যাতে এক লাইনে থাকে */}
                   <th className="p-4 font-bold whitespace-nowrap">User Email</th>
                   <th className="p-4 font-bold whitespace-nowrap">Device / Browser</th>
                   <th className="p-4 font-bold whitespace-nowrap">OTP Status</th>
@@ -196,7 +195,7 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
                     const currentDuration = calculateDuration(log);
                     return (
                       <tr key={log.id} className="hover:bg-indigo-50/30 transition-colors">
-                        {/* User Email: এক লাইনে থাকবে */}
+                        
                         <td className="p-4 font-semibold text-slate-800 whitespace-nowrap">
                           <div className="flex items-center space-x-2.5">
                             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
@@ -206,7 +205,6 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
                           </div>
                         </td>
 
-                        {/* Device / Browser: এক লাইনে থাকবে এবং স্ক্রল করে পুরোটা দেখা যাবে */}
                         <td className="p-4 text-xs text-slate-500 font-mono whitespace-nowrap">
                           <div className="flex items-center space-x-2">
                             <Laptop size={14} className="text-slate-400 shrink-0" />
