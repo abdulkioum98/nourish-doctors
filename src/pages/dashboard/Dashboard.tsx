@@ -91,16 +91,16 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
 
   // Cattle Tools
   const cattleServices: CardItem[] = [
-    { id: 'cattle-info', title: 'Cattle Ration Calculator', icon: <Calculator className="text-emerald-700" size={20} /> },
-    { id: 'weight-measure', title: 'Live Weight Estimator', icon: <Scale className="text-emerald-700" size={20} /> },
-    { id: 'nourish-feeds-reference', title: 'Nourish Cattle Feeds', icon: <Wheat className="text-emerald-700" size={20} /> },
+    { id: 'cattle-info', title: 'Cattle Ration Calculator', icon: <Calculator className="text-emerald-700" size={18} /> },
+    { id: 'weight-measure', title: 'Live Weight Estimator', icon: <Scale className="text-emerald-700" size={18} /> },
+    { id: 'nourish-feeds-reference', title: 'Nourish Cattle Feeds', icon: <Wheat className="text-emerald-700" size={18} /> },
   ];
 
   // Poultry Main Tools
   const poultryMainServices: CardItem[] = [
-    { id: 'layer-light', title: 'Layer Lighting Calculator', icon: <Sparkles className="text-amber-700" size={20} /> },
-    { id: 'poultry-uniformity', title: 'Uniformity Calculator', icon: <BarChart3 className="text-amber-700" size={20} /> },
-    { id: 'poultry-space', title: 'Poultry Space Calculator', icon: <Ruler className="text-amber-700" size={20} /> },
+    { id: 'layer-light', title: 'Layer Lighting Calculator', icon: <Sparkles className="text-amber-700" size={18} /> },
+    { id: 'poultry-uniformity', title: 'Uniformity Calculator', icon: <BarChart3 className="text-amber-700" size={18} /> },
+    { id: 'poultry-space', title: 'Poultry Space Calculator', icon: <Ruler className="text-amber-700" size={18} /> },
   ];
 
   const standardSubItems = [
@@ -126,20 +126,22 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     { id: 'nourish-sinking-fish', title: 'Sinking Fish Feeds' },
   ];
 
-  // One clean 3D card — single column, staggered: each section's cards are
-  // 62% wide (left edge to a bit past the middle, or the mirror of it),
-  // so one card per row and neighbours never move when an accordion opens.
+  // One clean 3D card — short again (like the earlier cards) and bleeding
+  // off one side of the screen: left cards start outside the screen on
+  // the left and stop just before the right edge; right cards mirror it.
+  // The bleed is a negative margin + a wider card, so it reads as coming
+  // in from outside the screen on mobile and PC alike.
   const renderCard = (item: CardItem, tintKey: TintKey, align: 'left' | 'right') => {
     const tint = TINTS[tintKey];
     return (
       <button
         key={item.id}
         onClick={() => onSelectPage(item.id, activeDropdowns)}
-        className={`group rounded-3xl p-4 min-h-[112px] w-[62%] ${
-          align === 'left' ? 'self-start' : 'self-end'
-        } flex flex-col items-start justify-between gap-3 text-left cursor-pointer transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:border-b-2 ${tint.tile}`}
+        className={`group rounded-3xl p-3 min-h-[88px] w-[calc(100%+36px)] ${
+          align === 'left' ? '-ml-10' : 'ml-1'
+        } flex flex-col items-start justify-between gap-2 text-left cursor-pointer transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:border-b-2 ${tint.tile}`}
       >
-        <div className={`p-2.5 rounded-2xl shadow-sm transition-colors ${tint.iconBox} ${tint.iconHover}`}>
+        <div className={`p-2 rounded-2xl shadow-sm transition-colors ${tint.iconBox} ${tint.iconHover}`}>
           {item.icon}
         </div>
         <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title}`}>
@@ -150,8 +152,8 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
   };
 
   // One accordion — closed it is a normal card like the others;
-  // open it grows in place inside its own 62% column and shows its
-  // sub-items as plain rows. Same alignment as its section.
+  // open it grows in place and shows its sub-items as plain rows.
+  // Same bleed as its section's cards.
   const renderAccordion = (
     key: 'standards' | 'vaccination' | 'feeds' | 'fish',
     title: string,
@@ -165,15 +167,15 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     return (
       <div
         key={key}
-        className={`relative rounded-3xl transition-all duration-300 overflow-hidden w-[62%] ${
-          align === 'left' ? 'self-start' : 'self-end'
+        className={`relative rounded-3xl transition-all duration-300 overflow-hidden w-[calc(100%+36px)] ${
+          align === 'left' ? '-ml-10' : 'ml-1'
         } ${tint.tile} hover:-translate-y-1 active:translate-y-0.5 active:border-b-2`}
       >
         <button
           onClick={() => toggleDropdown(key)}
-          className="group w-full p-4 min-h-[112px] flex flex-col items-start justify-between gap-3 text-left cursor-pointer"
+          className="group w-full p-3 min-h-[88px] flex flex-col items-start justify-between gap-2 text-left cursor-pointer"
         >
-          <div className={`p-2.5 rounded-2xl shadow-sm transition-colors shrink-0 ${tint.iconBox} ${tint.iconHover}`}>
+          <div className={`p-2 rounded-2xl shadow-sm transition-colors shrink-0 ${tint.iconBox} ${tint.iconHover}`}>
             {icon}
           </div>
           <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title}`}>
@@ -181,7 +183,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
           </span>
           <ChevronDown
             size={18}
-            className={`absolute top-4 right-4 transition-transform duration-300 ${tint.chevron} ${
+            className={`absolute top-3 right-3 transition-transform duration-300 ${tint.chevron} ${
               open ? 'rotate-180' : ''
             }`}
           />
@@ -216,7 +218,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
   return (
     <div className="min-h-screen py-8 px-5 flex flex-col items-center font-sans">
       <div className="w-full max-w-2xl space-y-10">
-        {/* ১. CATTLE SECTION — cards from the left edge to a bit past the middle */}
+        {/* ১. CATTLE SECTION — cards come in from outside the screen on the left */}
         <section className="space-y-4">
           {sectionHeading('bg-emerald-600', 'Cattle Tools', 'text-emerald-900')}
           <div className="flex flex-col gap-4">
@@ -224,22 +226,22 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
           </div>
         </section>
 
-        {/* ২. POULTRY SECTION — cards from the right edge to a bit past the middle */}
+        {/* ২. POULTRY SECTION — cards come in from outside the screen on the right */}
         <section className="space-y-4">
           {sectionHeading('bg-amber-500', 'Poultry Tools', 'text-amber-900')}
           <div className="flex flex-col gap-4">
             {poultryMainServices.map((item) => renderCard(item, 'amber', 'right'))}
-            {renderAccordion('standards', 'Poultry Standards', <Award className="text-amber-700" size={20} />, 'amber', standardSubItems, 'right')}
-            {renderAccordion('vaccination', 'Vaccination Schedule', <ShieldPlus className="text-amber-700" size={20} />, 'amber', vaccinationSubItems, 'right')}
-            {renderAccordion('feeds', 'Nourish Poultry Feeds', <BookOpen className="text-amber-700" size={20} />, 'amber', feedSubItems, 'right')}
+            {renderAccordion('standards', 'Poultry Standards', <Award className="text-amber-700" size={18} />, 'amber', standardSubItems, 'right')}
+            {renderAccordion('vaccination', 'Vaccination Schedule', <ShieldPlus className="text-amber-700" size={18} />, 'amber', vaccinationSubItems, 'right')}
+            {renderAccordion('feeds', 'Nourish Poultry Feeds', <BookOpen className="text-amber-700" size={18} />, 'amber', feedSubItems, 'right')}
           </div>
         </section>
 
-        {/* ৩. FISH / AQUA SECTION — card from the left edge to a bit past the middle */}
+        {/* ৩. FISH / AQUA SECTION — card comes in from outside the screen on the left */}
         <section className="space-y-4">
           {sectionHeading('bg-cyan-600', 'Aqua Tools', 'text-cyan-900')}
           <div className="flex flex-col gap-4">
-            {renderAccordion('fish', 'Nourish Fish Feeds', <Fish className="text-cyan-700" size={20} />, 'cyan', fishSubItems, 'left')}
+            {renderAccordion('fish', 'Nourish Fish Feeds', <Fish className="text-cyan-700" size={18} />, 'cyan', fishSubItems, 'left')}
           </div>
         </section>
       </div>

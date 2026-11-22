@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+/* Cards on the home page bleed past the edge of the screen on one side,
+   so they look like they come in from outside the screen. The bleed
+   extends past the viewport, so horizontal scrolling must stay off. */
+body {
+  overflow-x: hidden;
+}
