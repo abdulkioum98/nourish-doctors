@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
+import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, ShieldCheck, Search } from 'lucide-react';
 
 interface BroilerVaccinationData {
@@ -9,9 +10,6 @@ interface BroilerVaccinationData {
   strain: string;
   route: string;
 }
-
-// Memory Cache variable
-let broilerVaccinationsCache: BroilerVaccinationData[] | null = null;
 
 export default function BroilerVaccination() {
   const [vaccinations, setVaccinations] = useState<BroilerVaccinationData[]>([]);
@@ -24,6 +22,9 @@ export default function BroilerVaccination() {
   useEffect(() => {
     fetchBroilerVaccinations();
 
+    // Realtime only when online — offline a channel just hangs / errors.
+    if (!shouldUseRealtime()) return;
+
     // Supabase Realtime Listener
     const channel = supabase
       .channel(`${tableName}_realtime_changes`)
@@ -32,8 +33,11 @@ export default function BroilerVaccination() {
         { event: '*', schema: 'public', table: tableName },
         (payload) => {
           console.log('Broiler vaccinations updated in database, refreshing cache...', payload);
-          broilerVaccinationsCache = null; // Clear cache
-          fetchBroilerVaccinations(false); // Fetch fresh data
+          void fetchSonaliVaccinationsRows().then((rows) => {
+            void setCached('broiler_vaccinations:all', rows);
+            setVaccinations(rows);
+            setFilteredData(rows);
+          });
         }
       )
       .subscribe();
@@ -58,16 +62,10 @@ export default function BroilerVaccination() {
     }
   }, [searchTerm, vaccinations]);
 
-  const fetchBroilerVaccinations = async (useCache = true) => {
-    if (useCache && broilerVaccinationsCache) {
-      setVaccinations(broilerVaccinationsCache);
-      setFilteredData(broilerVaccinationsCache);
-      setLoading(false);
-      return;
-    }
-
+  // Exact Supabase query, used both as the cache-first fetcher and on realtime events.
+  // Sonali intentionally reuses the broiler_vaccinations table — kept as is.
+  const fetchSonaliVaccinationsRows = async (): Promise<BroilerVaccinationData[]> => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
@@ -75,16 +73,25 @@ export default function BroilerVaccination() {
 
       if (error) {
         console.error('Error fetching broiler vaccinations:', error);
-      } else if (data) {
-        broilerVaccinationsCache = data;
-        setVaccinations(data);
-        setFilteredData(data);
+        return [];
       }
+      return (data ?? []) as BroilerVaccinationData[];
     } catch (err) {
       console.error('Unexpected error:', err);
-    } finally {
-      setLoading(false);
+      return [];
     }
+  };
+
+  const fetchBroilerVaccinations = async () => {
+    await loadCachedFirst<BroilerVaccinationData[]>(
+      'broiler_vaccinations:all',
+      fetchSonaliVaccinationsRows,
+      (rows) => {
+        setVaccinations(rows);
+        setFilteredData(rows);
+      },
+      () => setLoading(false),
+    );
   };
 
   if (loading && vaccinations.length === 0) {

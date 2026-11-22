@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst, isOnline } from '../../lib/offline';
 import { 
   Lock, LogOut, Plus, Edit3, Trash2, Save, X, Loader2, 
   Wheat, FlaskConical, BookOpen, RefreshCw, ArrowLeft, Dna 
@@ -97,33 +98,85 @@ export default function AdminPage({ onBack }: AdminPageProps) {
 
   const fetchAllData = async () => {
     setLoading(true);
+    // loadCachedFirst calls onDone as soon as cached rows render, so the
+    // spinner stops instantly on cache hits; the awaited promises only
+    // finish after the background network refresh.
+    let doneCount = 0;
+    const markDone = () => {
+      doneCount += 1;
+      if (doneCount === 4) setLoading(false);
+    };
     await Promise.all([
-      fetchNourishFeeds(),
-      fetchOtherIngredients(),
-      fetchDmReferences(),
-      fetchBreeds()
+      fetchNourishFeeds(markDone),
+      fetchOtherIngredients(markDone),
+      fetchDmReferences(markDone),
+      fetchBreeds(markDone),
     ]);
     setLoading(false);
   };
 
-  const fetchNourishFeeds = async () => {
-    const { data } = await supabase.from('nourish_feeds').select('*').order('created_at', { ascending: true });
-    setNourishFeeds(data || []);
+  const fetchNourishFeeds = async (onDone?: () => void) => {
+    await loadCachedFirst<any[]>(
+      'nourish_feeds:all',
+      async () => {
+        const { data, error } = await supabase.from('nourish_feeds').select('*').order('created_at', { ascending: true });
+        if (error) {
+          console.error('Error fetching nourish feeds:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setNourishFeeds(rows),
+      onDone,
+    );
   };
 
-  const fetchOtherIngredients = async () => {
-    const { data } = await supabase.from('other_ingredients').select('*').order('created_at', { ascending: true });
-    setOtherIngredients(data || []);
+  const fetchOtherIngredients = async (onDone?: () => void) => {
+    await loadCachedFirst<any[]>(
+      'other_ingredients:all',
+      async () => {
+        const { data, error } = await supabase.from('other_ingredients').select('*').order('created_at', { ascending: true });
+        if (error) {
+          console.error('Error fetching other ingredients:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setOtherIngredients(rows),
+      onDone,
+    );
   };
 
-  const fetchDmReferences = async () => {
-    const { data } = await supabase.from('dm_references').select('*').order('target_group', { ascending: true });
-    setDmReferences(data || []);
+  const fetchDmReferences = async (onDone?: () => void) => {
+    await loadCachedFirst<any[]>(
+      'dm_references:all',
+      async () => {
+        const { data, error } = await supabase.from('dm_references').select('*').order('target_group', { ascending: true });
+        if (error) {
+          console.error('Error fetching DM references:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setDmReferences(rows),
+      onDone,
+    );
   };
 
-  const fetchBreeds = async () => {
-    const { data } = await supabase.from('breeds').select('*').order('name', { ascending: true });
-    setBreeds(data || []);
+  const fetchBreeds = async (onDone?: () => void) => {
+    await loadCachedFirst<any[]>(
+      'breeds:all',
+      async () => {
+        const { data, error } = await supabase.from('breeds').select('*').order('name', { ascending: true });
+        if (error) {
+          console.error('Error fetching breeds:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setBreeds(rows),
+      onDone,
+    );
   };
 
   const resetForm = () => {
@@ -150,6 +203,10 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   };
 
   const handleDelete = async (table: string, id: string | number) => {
+    if (!isOnline()) {
+      alert('You are offline. Admin changes need internet.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     const { error } = await supabase.from(table).delete().eq('id', id);
     if (!error) fetchAllData();
@@ -159,6 +216,10 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   // Submit Handler for Nourish Feeds
   const handleNourishSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline()) {
+      alert('You are offline. Admin changes need internet.');
+      return;
+    }
     setSubmitting(true);
     const payload = {
       name: itemName,
@@ -182,6 +243,10 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   // Submit Handler for Other Ingredients
   const handleOtherIngredientsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline()) {
+      alert('You are offline. Admin changes need internet.');
+      return;
+    }
     setSubmitting(true);
     const payload = {
       name: itemName,
@@ -205,6 +270,10 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   // Submit Handler for DM References
   const handleDmSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline()) {
+      alert('You are offline. Admin changes need internet.');
+      return;
+    }
     setSubmitting(true);
     const payload = {
       stage_key: stageName.toLowerCase().replace(/\s+/g, '_'),
@@ -227,6 +296,10 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   // Submit Handler for Breeds
   const handleBreedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline()) {
+      alert('You are offline. Admin changes need internet.');
+      return;
+    }
     setSubmitting(true);
     const payload = {
       name: breedName,
@@ -301,7 +374,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
               className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 rounded-lg text-xs transition flex items-center justify-center space-x-1"
             >
               <ArrowLeft size={13} />
-              <span>Back to Application</span>
+              <span>Back to Main Menu</span>
             </button>
           )}
         </div>

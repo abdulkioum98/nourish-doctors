@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
+import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, Award, Search } from 'lucide-react';
 
 interface BroilerData {
@@ -9,9 +10,6 @@ interface BroilerData {
   feed_intake: number;
   fcr: number;
 }
-
-// মেমোরি ক্যাশ ভেরিয়েবল (যাতে বারবার সুপাবেস কল না করা লাগে)
-let broilerStandardsCache: BroilerData[] | null = null;
 
 export default function BroilerStandard() {
   const [standards, setStandards] = useState<BroilerData[]>([]);
@@ -24,7 +22,10 @@ export default function BroilerStandard() {
   useEffect(() => {
     fetchBroilerStandards();
 
-    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    // Realtime only when online — offline a channel just hangs / errors.
+    if (!shouldUseRealtime()) return;
+
+    // Supabase Realtime listener (auto-update when the database changes)
     const channel = supabase
       .channel(`${tableName}_realtime_changes`)
       .on(
@@ -32,8 +33,11 @@ export default function BroilerStandard() {
         { event: '*', schema: 'public', table: tableName },
         (payload) => {
           console.log('Broiler standards updated in database, refreshing cache...', payload);
-          broilerStandardsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
-          fetchBroilerStandards(false); // সরাসরি নতুন ডাটা ফেচ করা হচ্ছে
+          void fetchBroilerStandardsRows().then((rows) => {
+            void setCached('broiler_standards:all', rows);
+            setStandards(rows);
+            setFilteredStandards(rows);
+          });
         }
       )
       .subscribe();
@@ -54,17 +58,9 @@ export default function BroilerStandard() {
     }
   }, [searchDay, standards]);
 
-  const fetchBroilerStandards = async (useCache = true) => {
-    // ১. ক্যাশে ডেটা থাকলে সেটি ব্যবহার করব, ফাস্ট হবে
-    if (useCache && broilerStandardsCache) {
-      setStandards(broilerStandardsCache);
-      setFilteredStandards(broilerStandardsCache);
-      setLoading(false);
-      return;
-    }
-
+  // Exact Supabase query, used both as the cache-first fetcher and on realtime events.
+  const fetchBroilerStandardsRows = async (): Promise<BroilerData[]> => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
@@ -72,16 +68,25 @@ export default function BroilerStandard() {
 
       if (error) {
         console.error('Error fetching broiler standards:', error);
-      } else if (data) {
-        broilerStandardsCache = data; // ক্যাশে সেভ করে রাখলাম
-        setStandards(data);
-        setFilteredStandards(data);
+        return [];
       }
+      return (data ?? []) as BroilerData[];
     } catch (err) {
       console.error('Unexpected error:', err);
-    } finally {
-      setLoading(false);
+      return [];
     }
+  };
+
+  const fetchBroilerStandards = async () => {
+    await loadCachedFirst<BroilerData[]>(
+      'broiler_standards:all',
+      fetchBroilerStandardsRows,
+      (rows) => {
+        setStandards(rows);
+        setFilteredStandards(rows);
+      },
+      () => setLoading(false),
+    );
   };
 
   if (loading && standards.length === 0) {

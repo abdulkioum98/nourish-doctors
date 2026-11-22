@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
+import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, ShieldCheck, Search } from 'lucide-react';
 
 interface LayerVaccinationData {
@@ -10,9 +11,6 @@ interface LayerVaccinationData {
   vaccine_type: string;
   route: string;
 }
-
-// মেমোরি ক্যাশ ভেরিয়েবল (যাতে বারবার সুপাবেস কল না করা লাগে)
-let layerVaccinationsCache: LayerVaccinationData[] | null = null;
 
 export default function LayerVaccination() {
   const [vaccinations, setVaccinations] = useState<LayerVaccinationData[]>([]);
@@ -25,7 +23,10 @@ export default function LayerVaccination() {
   useEffect(() => {
     fetchLayerVaccinations();
 
-    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    // Realtime only when online — offline a channel just hangs / errors.
+    if (!shouldUseRealtime()) return;
+
+    // Supabase Realtime listener (auto-update when the database changes)
     const channel = supabase
       .channel(`${tableName}_realtime_changes`)
       .on(
@@ -33,8 +34,11 @@ export default function LayerVaccination() {
         { event: '*', schema: 'public', table: tableName },
         (payload) => {
           console.log('Layer vaccinations updated in database, refreshing cache...', payload);
-          layerVaccinationsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
-          fetchLayerVaccinations(false); // সরাসরি নতুন ডাটা ফেচ করা হচ্ছে
+          void fetchLayerVaccinationsRows().then((rows) => {
+            void setCached('layer_vaccinations:all', rows);
+            setVaccinations(rows);
+            setFilteredData(rows);
+          });
         }
       )
       .subscribe();
@@ -59,17 +63,9 @@ export default function LayerVaccination() {
     }
   }, [searchTerm, vaccinations]);
 
-  const fetchLayerVaccinations = async (useCache = true) => {
-    // ১. ক্যাশে ডেটা থাকলে সেটি ব্যবহার করব, ফাস্ট হবে
-    if (useCache && layerVaccinationsCache) {
-      setVaccinations(layerVaccinationsCache);
-      setFilteredData(layerVaccinationsCache);
-      setLoading(false);
-      return;
-    }
-
+  // Exact Supabase query, used both as the cache-first fetcher and on realtime events.
+  const fetchLayerVaccinationsRows = async (): Promise<LayerVaccinationData[]> => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
@@ -77,16 +73,25 @@ export default function LayerVaccination() {
 
       if (error) {
         console.error('Error fetching layer vaccinations:', error);
-      } else if (data) {
-        layerVaccinationsCache = data; // ক্যাশে সেভ করে রাখলাম
-        setVaccinations(data);
-        setFilteredData(data);
+        return [];
       }
+      return (data ?? []) as LayerVaccinationData[];
     } catch (err) {
       console.error('Unexpected error:', err);
-    } finally {
-      setLoading(false);
+      return [];
     }
+  };
+
+  const fetchLayerVaccinations = async () => {
+    await loadCachedFirst<LayerVaccinationData[]>(
+      'layer_vaccinations:all',
+      fetchLayerVaccinationsRows,
+      (rows) => {
+        setVaccinations(rows);
+        setFilteredData(rows);
+      },
+      () => setLoading(false),
+    );
   };
 
   if (loading && vaccinations.length === 0) {

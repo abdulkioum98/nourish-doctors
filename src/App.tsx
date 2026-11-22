@@ -54,6 +54,13 @@ import NourishSinkingFishFeeds from './pages/fish/NourishSinkingFishFeeds';
 
 import AdminPage from './pages/admin/AdminPage';
 import { Loader2 } from 'lucide-react';
+import {
+  initOfflineSync,
+  syncAllReferenceData,
+  processOutbox,
+  sendOrQueueUserLog,
+  isOnline,
+} from './lib/offline';
 
 export type CattleData = CowData | FatteningCowData;
 
@@ -137,38 +144,51 @@ export default function App() {
   const [dairyData, setDairyData] = useState<CowData | null>(null);
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
 
-  // Helper function to update user online status in database
+  // Helper function to update user online status in database.
+  // Offline-safe: queued in Dexie and sent when back online, never blocks.
   const updateUserOnlineStatus = async (email: string) => {
-    await supabase
-      .from('user_logs')
-      .upsert(
-        [
-          {
-            user_email: email,
-            is_logged_in: true,
-            login_time: new Date().toISOString(),
-          },
-        ],
-        { onConflict: 'user_email' }
-      );
+    await sendOrQueueUserLog({
+      user_email: email,
+      is_logged_in: true,
+      login_time: new Date().toISOString(),
+    });
   };
 
   // 1. SUPABASE AUTH SESSION CHECK & AUTO ONLINE SYNC
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setCheckingAuth(false);
-      
-      // ইউজার সাইটে প্রবেশ করলেই বা রিফ্রেশ দিলেই ডাটাবেজে Online হয়ে যাবে
-      if (session?.user?.email) {
-        updateUserOnlineStatus(session.user.email);
-      }
-    });
+    initOfflineSync();
+
+    // getSession() reads the locally stored session, but a stale/expired
+    // token can make it hang when offline — never block the app on it.
+    // The auth-state listener below still delivers the session when ready.
+    const sessionTimeout = new Promise<{ data: { session: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { session: null } }), 4000),
+    );
+    Promise.race([supabase.auth.getSession(), sessionTimeout])
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setCheckingAuth(false);
+
+        // ইউজার সাইটে প্রবেশ করলেই বা রিফ্রেশ দিলেই ডাটাবেজে Online হয়ে যাবে
+        if (session?.user?.email) {
+          updateUserOnlineStatus(session.user.email);
+          if (isOnline()) {
+            void syncAllReferenceData();
+            void processOutbox();
+          }
+        }
+      })
+      .catch(() => setCheckingAuth(false));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setCheckingAuth(false);
       if (session?.user?.email) {
         updateUserOnlineStatus(session.user.email);
+        if (isOnline()) {
+          void syncAllReferenceData();
+          void processOutbox();
+        }
       }
     });
 
@@ -231,13 +251,18 @@ export default function App() {
   };
 
   const handleGoBack = () => {
-    if (pageHistory.length > 0) {
-      const previousPage = pageHistory[pageHistory.length - 1];
-      setPageHistory((prev) => prev.slice(0, -1));
-      setCurrentPage(previousPage);
-    } else {
-      setCurrentPage('home');
+    // Pop history until the previous page is actually different from the
+    // current one (the initial ['home'] entry used to create duplicates
+    // that made Back look like it went nowhere / to the wrong page).
+    const hist = [...pageHistory];
+    let previous: PageType | undefined;
+    while (hist.length > 0) {
+      previous = hist.pop();
+      if (previous !== currentPage) break;
+      previous = undefined;
     }
+    setPageHistory(hist);
+    setCurrentPage(previous ?? 'home');
   };
 
   const handleGoHome = () => {
@@ -461,23 +486,23 @@ export default function App() {
         )}
 
         {(currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') && (
-          <NourishFeedPage onBack={() => navigateToPage('calculator')} />
+          <NourishFeedPage onBack={handleGoHome} />
         )}
 
         {(currentPage === 'feed-nutrients' || currentPage === 'other-ingredients-reference') && (
-          <FeedNutrientsPage onBack={() => navigateToPage('calculator')} />
+          <FeedNutrientsPage onBack={handleGoHome} />
         )}
 
         {(currentPage === 'dm-reference' || currentPage === 'dm-ratio-reference') && (
-          <DmReferencePage onBack={() => navigateToPage('calculator')} />
+          <DmReferencePage onBack={handleGoHome} />
         )}
 
         {currentPage === 'admin' && (
-          <AdminPage onBack={() => navigateToPage('calculator')} />
+          <AdminPage onBack={handleGoHome} />
         )}
 
         {currentPage === 'breed-reference' && (
-          <BreedPage onBack={() => navigateToPage('calculator')} />
+          <BreedPage onBack={handleGoHome} />
         )}
 
         {currentPage === 'weight-measure' && (

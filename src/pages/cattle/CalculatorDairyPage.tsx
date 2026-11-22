@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst } from '../../lib/offline';
 import { Loader2, AlertCircle, Edit3, CheckCircle2, Download, Copy, X, Check } from 'lucide-react';
 import { CowData } from './CattleInfoPage';
 
@@ -33,23 +34,19 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
 
   const fetchCalculatorData = async () => {
     setLoading(true);
-    try {
-      // 1. Fetch Dairy feeds from nourish_feeds (Always Concentrate)
-      const { data: nourishData, error: nourishError } = await supabase
-        .from('nourish_feeds')
-        .select('*')
-        .ilike('category', 'dairy');
-
-      // 2. Fetch all items from other_ingredients
-      const { data: otherData, error: otherError } = await supabase
-        .from('other_ingredients')
-        .select('*');
-
-      if (nourishError) throw nourishError;
-      if (otherError) throw otherError;
-
+    // Both tables are loaded cache-first; the combined list is built only
+    // once both have arrived, so cached rows still render instantly.
+    let nourishRows: any[] | null = null;
+    let otherRows: any[] | null = null;
+    let doneCount = 0;
+    const markDone = () => {
+      doneCount += 1;
+      if (doneCount === 2) setLoading(false);
+    };
+    const buildCombinedList = () => {
+      if (!nourishRows || !otherRows) return;
       // Map Nourish feeds
-      const formattedNourish: FeedItem[] = (nourishData || []).map((item) => ({
+      const formattedNourish: FeedItem[] = (nourishRows || []).map((item) => ({
         id: `nourish_${item.id}`,
         name: item.name,
         price_per_kg: parseFloat(item.price) || 0,
@@ -60,7 +57,7 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
       }));
 
       // Map Other Ingredients
-      const formattedOther: FeedItem[] = (otherData || []).map((item) => ({
+      const formattedOther: FeedItem[] = (otherRows || []).map((item) => ({
         id: `other_${item.id}`,
         name: item.name,
         price_per_kg: parseFloat(item.price) || 0,
@@ -82,11 +79,48 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
       });
 
       setItemList(combinedList);
-    } catch (err) {
-      console.error('Error fetching calculator data:', err);
-    } finally {
-      setLoading(false);
-    }
+    };
+    await Promise.all([
+      // 1. Fetch Dairy feeds from nourish_feeds (Always Concentrate)
+      loadCachedFirst<any[]>(
+        'nourish_feeds:dairy',
+        async () => {
+          const { data, error } = await supabase
+            .from('nourish_feeds')
+            .select('*')
+            .ilike('category', 'dairy');
+          if (error) {
+            console.error('Error fetching calculator data:', error);
+            return [];
+          }
+          return data || [];
+        },
+        (rows) => {
+          nourishRows = rows;
+          buildCombinedList();
+        },
+        markDone,
+      ),
+      // 2. Fetch all items from other_ingredients
+      loadCachedFirst<any[]>(
+        'other_ingredients:all',
+        async () => {
+          const { data, error } = await supabase
+            .from('other_ingredients')
+            .select('*');
+          if (error) {
+            console.error('Error fetching calculator data:', error);
+            return [];
+          }
+          return data || [];
+        },
+        (rows) => {
+          otherRows = rows;
+          buildCombinedList();
+        },
+        markDone,
+      ),
+    ]);
   };
 
   const handleQuantityChange = (id: string, val: string) => {

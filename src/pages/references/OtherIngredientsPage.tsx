@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst } from '../../lib/offline';
 import { ArrowLeft, FlaskConical, Loader2, Layers } from 'lucide-react';
 
 export interface NutrientItem {
@@ -24,21 +25,25 @@ export default function FeedNutrientsPage({ onBack }: FeedNutrientsPageProps) {
   const [activeFeedType, setActiveFeedType] = useState<'concentrate' | 'fodder'>('concentrate');
   const [loading, setLoading] = useState(true);
 
-  // Fetch items from Supabase 'other_ingredients' table
+  // Fetch items from Supabase 'other_ingredients' table (cache-first).
   const fetchItems = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('other_ingredients')
-      .select('*')
-      .order('id', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching other ingredients:', error);
-      alert('Failed to load ingredients: ' + error.message);
-    } else {
-      setItems(data || []);
-    }
-    setLoading(false);
+    await loadCachedFirst<NutrientItem[]>(
+      'other_ingredients:all',
+      async () => {
+        const { data, error } = await supabase
+          .from('other_ingredients')
+          .select('*')
+          .order('id', { ascending: true });
+        if (error) {
+          console.error('Error fetching other ingredients:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setItems(rows),
+      () => setLoading(false),
+    );
   };
 
   useEffect(() => {

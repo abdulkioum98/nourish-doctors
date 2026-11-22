@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst } from '../../lib/offline';
 import { ArrowLeft, Wheat, Loader2 } from 'lucide-react';
 
 export interface FeedItem {
@@ -23,21 +24,26 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'dairy' | 'fattening'>('all');
   const [loading, setLoading] = useState(true);
 
-  // Fetch nourish_feeds data from Supabase
+  // Fetch nourish_feeds data from Supabase (cache-first: renders from
+  // IndexedDB instantly, refreshes from network in the background).
   const fetchFeeds = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('nourish_feeds')
-      .select('*')
-      .order('id', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching nourish feeds:', error);
-      alert('Failed to load feed items: ' + error.message);
-    } else {
-      setFeeds(data || []);
-    }
-    setLoading(false);
+    await loadCachedFirst<FeedItem[]>(
+      'nourish_feeds:all',
+      async () => {
+        const { data, error } = await supabase
+          .from('nourish_feeds')
+          .select('*')
+          .order('id', { ascending: true });
+        if (error) {
+          console.error('Error fetching nourish feeds:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setFeeds(rows),
+      () => setLoading(false),
+    );
   };
 
   useEffect(() => {

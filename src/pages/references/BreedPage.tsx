@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst } from '../../lib/offline';
 import { ArrowLeft, Dna, Loader2 } from 'lucide-react';
 
 export interface BreedItem {
@@ -19,17 +20,22 @@ export default function BreedPage({ onBack }: BreedPageProps) {
 
   const fetchBreeds = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('breeds')
-      .select('*')
-      .order('name', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching breeds:', error);
-    } else {
-      setBreeds(data || []);
-    }
-    setLoading(false);
+    await loadCachedFirst<BreedItem[]>(
+      'breeds:all',
+      async () => {
+        const { data, error } = await supabase
+          .from('breeds')
+          .select('*')
+          .order('name', { ascending: true });
+        if (error) {
+          console.error('Error fetching breeds:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setBreeds(rows),
+      () => setLoading(false),
+    );
   };
 
   useEffect(() => {
@@ -116,7 +122,7 @@ export default function BreedPage({ onBack }: BreedPageProps) {
         className="w-full bg-emerald-600 text-white font-medium py-2 rounded-lg text-xs hover:bg-emerald-700 transition flex items-center justify-center space-x-1.5 mt-2"
       >
         <ArrowLeft size={14} />
-        <span>Back to Calculator</span>
+        <span>Back to Main Menu</span>
       </button>
     </div>
   );

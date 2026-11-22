@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
+import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, Package, Search } from 'lucide-react';
 
 interface BroilerFeedData {
@@ -18,9 +19,6 @@ interface BroilerFeedData {
   price?: number;
 }
 
-// মেমোরি ক্যাশ ভেরিয়েবল (যাতে বারবার সুপাবেস কল করা না লাগে)
-let broilerFeedsCache: BroilerFeedData[] | null = null;
-
 export default function BroilerFeed() {
   const [feeds, setFeeds] = useState<BroilerFeedData[]>([]);
   const [filteredFeeds, setFilteredFeeds] = useState<BroilerFeedData[]>([]);
@@ -32,7 +30,10 @@ export default function BroilerFeed() {
   useEffect(() => {
     fetchBroilerFeeds();
 
-    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    // Realtime only when online — offline a channel just hangs / errors.
+    if (!shouldUseRealtime()) return;
+
+    // Supabase Realtime listener (auto-update when the database changes)
     const channel = supabase
       .channel(`${tableName}_realtime_changes`)
       .on(
@@ -40,8 +41,11 @@ export default function BroilerFeed() {
         { event: '*', schema: 'public', table: tableName },
         (payload) => {
           console.log('Broiler feeds updated in database, refreshing cache...', payload);
-          broilerFeedsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
-          fetchBroilerFeeds(false); // সরাসরি নতুন ডাটা ফেচ করা হচ্ছে
+          void fetchBroilerFeedsRows().then((rows) => {
+            void setCached('broiler_feeds:all', rows);
+            setFeeds(rows);
+            setFilteredFeeds(rows);
+          });
         }
       )
       .subscribe();
@@ -58,17 +62,9 @@ export default function BroilerFeed() {
     setFilteredFeeds(result);
   }, [searchTerm, feeds]);
 
-  const fetchBroilerFeeds = async (useCache = true) => {
-    // ১. ক্যাশে ডেটা থাকলে সেটি ব্যবহার করব, ফাস্ট হবে
-    if (useCache && broilerFeedsCache) {
-      setFeeds(broilerFeedsCache);
-      setFilteredFeeds(broilerFeedsCache);
-      setLoading(false);
-      return;
-    }
-
+  // Exact Supabase query, used both as the cache-first fetcher and on realtime events.
+  const fetchBroilerFeedsRows = async (): Promise<BroilerFeedData[]> => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
@@ -76,16 +72,25 @@ export default function BroilerFeed() {
 
       if (error) {
         console.error('Error fetching broiler feeds:', error);
-      } else if (data) {
-        broilerFeedsCache = data; // ক্যাশে সেভ করে রাখলাম
-        setFeeds(data);
-        setFilteredFeeds(data);
+        return [];
       }
+      return (data ?? []) as BroilerFeedData[];
     } catch (err) {
       console.error('Unexpected error:', err);
-    } finally {
-      setLoading(false);
+      return [];
     }
+  };
+
+  const fetchBroilerFeeds = async () => {
+    await loadCachedFirst<BroilerFeedData[]>(
+      'broiler_feeds:all',
+      fetchBroilerFeedsRows,
+      (rows) => {
+        setFeeds(rows);
+        setFilteredFeeds(rows);
+      },
+      () => setLoading(false),
+    );
   };
 
   if (loading && feeds.length === 0) {

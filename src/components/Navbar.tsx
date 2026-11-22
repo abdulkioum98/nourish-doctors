@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, Home, ArrowLeft } from 'lucide-react';
 
 interface NavbarProps {
@@ -25,6 +25,20 @@ const PAGE_TITLES: Record<string, string> = {
 export default function Navbar({ onOpenSidebar, onGoHome, onGoBack, currentPage }: NavbarProps) {
   const pageTitle = PAGE_TITLES[currentPage] || 'Nourish-Doctors';
   const isHomePage = currentPage === 'home' || currentPage === 'dashboard';
+  const [offline, setOffline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? !navigator.onLine : false,
+  );
+
+  useEffect(() => {
+    const goOffline = () => setOffline(true);
+    const goOnline = () => setOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, []);
 
   const handleBack = () => {
     if (onGoBack) {
@@ -56,6 +70,11 @@ export default function Navbar({ onOpenSidebar, onGoHome, onGoBack, currentPage 
           <h1 className="text-lg font-bold tracking-tight">
             {pageTitle}
           </h1>
+          {offline && (
+            <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
+              Offline
+            </span>
+          )}
         </div>
 
         {/* Home Button*/}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '../../../supabaseClient';
+import { isOnline, queueLogout } from '../../../lib/offline';
 import {
   X,
   LogOut,
@@ -28,6 +29,13 @@ export default function NourishCattleFeedSidebar({
 }: SidebarProps) {
 
   const handleLogout = async () => {
+      if (!isOnline()) {
+        if (userEmail) await queueLogout(userEmail);
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+        window.location.reload();
+        return;
+      }
+
       if (userEmail) {
         await supabase
           .from('user_logs')
@@ -38,7 +46,11 @@ export default function NourishCattleFeedSidebar({
           .eq('user_email', userEmail);
       }
   
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      }
       window.location.reload();
     };
 

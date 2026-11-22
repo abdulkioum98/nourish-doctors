@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst } from '../../lib/offline';
 import { ArrowLeft, BookOpen, Loader2 } from 'lucide-react';
 
 export interface DmReferenceItem {
@@ -25,19 +26,24 @@ export default function DmReferencePage({ onBack }: DmReferencePageProps) {
 
   const fetchReferences = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('dm_references')
-      .select('*')
-      .order('target_group', { ascending: true })
-      .order('min_days', { ascending: true, nullsFirst: false })
-      .order('min_months', { ascending: true, nullsFirst: false });
-
-    if (error) {
-      console.error('Error fetching DM references:', error);
-    } else {
-      setReferences(data || []);
-    }
-    setLoading(false);
+    await loadCachedFirst<DmReferenceItem[]>(
+      'dm_references:all',
+      async () => {
+        const { data, error } = await supabase
+          .from('dm_references')
+          .select('*')
+          .order('target_group', { ascending: true })
+          .order('min_days', { ascending: true, nullsFirst: false })
+          .order('min_months', { ascending: true, nullsFirst: false });
+        if (error) {
+          console.error('Error fetching DM references:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setReferences(rows),
+      () => setLoading(false),
+    );
   };
 
   useEffect(() => {
@@ -140,7 +146,7 @@ export default function DmReferencePage({ onBack }: DmReferencePageProps) {
         className="w-full bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs hover:bg-slate-900 transition flex items-center justify-center space-x-1.5 shadow-2xs mt-3"
       >
         <ArrowLeft size={14} />
-        <span>Back to Calculator</span>
+        <span>Back to Main Menu</span>
       </button>
     </div>
   );

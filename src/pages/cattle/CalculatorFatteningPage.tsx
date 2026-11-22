@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst } from '../../lib/offline';
 import { Loader2, AlertCircle, Edit3, CheckCircle2 } from 'lucide-react';
 import { FatteningCowData } from './FatteningInfoPage';
 
@@ -38,22 +39,17 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
 
   const fetchCalculatorData = async () => {
     setLoading(true);
-    try {
-      // 1. Fetch Nourish Feeds (Fattening Category)
-      const { data: nourishFeeds, error: nourishErr } = await supabase
-        .from('nourish_feeds')
-        .select('id, name, price, category, dm, cp, me')
-        .ilike('category', 'fattening');
-
-      // 2. Fetch Other Ingredients (Concentrate & Fodder)
-      const { data: otherFeeds, error: otherErr } = await supabase
-        .from('other_ingredients')
-        .select('id, name, price, feed_type, dm, cp, me')
-        .or('feed_type.ilike.concentrate,feed_type.ilike.fodder');
-
-      if (nourishErr) throw nourishErr;
-      if (otherErr) throw otherErr;
-
+    // Both tables are loaded cache-first; the combined lists are built only
+    // once both have arrived, so cached rows still render instantly.
+    let nourishFeeds: any[] | null = null;
+    let otherFeeds: any[] | null = null;
+    let doneCount = 0;
+    const markDone = () => {
+      doneCount += 1;
+      if (doneCount === 2) setLoading(false);
+    };
+    const buildCombinedLists = () => {
+      if (!nourishFeeds || !otherFeeds) return;
       // Nourish Feeds Mapping (Default feed_type -> concentrate)
       const mappedNourishPrice: PriceListItem[] = (nourishFeeds || []).map((item: any) => ({
         id: item.id,
@@ -108,11 +104,49 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
 
       setPriceList(sortNourishFirst(combinedPrice));
       setNutrientList(sortNourishFirst(combinedNutrient));
-    } catch (err) {
-      console.error('Error fetching fattening calculator data:', err);
-    } finally {
-      setLoading(false);
-    }
+    };
+    await Promise.all([
+      // 1. Fetch Nourish Feeds (Fattening Category)
+      loadCachedFirst<any[]>(
+        'nourish_feeds:fattening',
+        async () => {
+          const { data, error } = await supabase
+            .from('nourish_feeds')
+            .select('id, name, price, category, dm, cp, me')
+            .ilike('category', 'fattening');
+          if (error) {
+            console.error('Error fetching fattening calculator data:', error);
+            return [];
+          }
+          return data || [];
+        },
+        (rows) => {
+          nourishFeeds = rows;
+          buildCombinedLists();
+        },
+        markDone,
+      ),
+      // 2. Fetch Other Ingredients (Concentrate & Fodder)
+      loadCachedFirst<any[]>(
+        'other_ingredients:concentrate-fodder',
+        async () => {
+          const { data, error } = await supabase
+            .from('other_ingredients')
+            .select('id, name, price, feed_type, dm, cp, me')
+            .or('feed_type.ilike.concentrate,feed_type.ilike.fodder');
+          if (error) {
+            console.error('Error fetching fattening calculator data:', error);
+            return [];
+          }
+          return data || [];
+        },
+        (rows) => {
+          otherFeeds = rows;
+          buildCombinedLists();
+        },
+        markDone,
+      ),
+    ]);
   };
 
   const handleQuantityChange = (id: string, val: string) => {

@@ -59,7 +59,7 @@ export default function WeightEstimatorPage({ onBack }: WeightEstimatorPageProps
       )}
 
       {/* Input Form Box */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h3 className="font-bold text-slate-800 text-sm sm:text-base flex items-center space-x-2">
             <Scale size={18} className="text-emerald-600" />
@@ -95,7 +95,7 @@ export default function WeightEstimatorPage({ onBack }: WeightEstimatorPageProps
                 placeholder="e.g. 48"
                 value={lengthInches}
                 onChange={(e) => setLengthInches(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/20 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 outline-none transition"
+                className="w-full bg-emerald-50/60 border border-emerald-200/70 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/20 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 outline-none transition"
               />
               <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400 select-none">
                 inch
@@ -114,7 +114,7 @@ export default function WeightEstimatorPage({ onBack }: WeightEstimatorPageProps
                 placeholder="e.g. 58"
                 value={girthInches}
                 onChange={(e) => setGirthInches(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/20 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 outline-none transition"
+                className="w-full bg-emerald-50/60 border border-emerald-200/70 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/20 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 outline-none transition"
               />
               <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400 select-none">
                 inch
@@ -125,37 +125,37 @@ export default function WeightEstimatorPage({ onBack }: WeightEstimatorPageProps
       </div>
 
       {/* Result Card (Always Visible as UI Layout) */}
-      <div className="bg-gradient-to-br from-emerald-600 to-teal-800 text-white rounded-2xl p-5 shadow-lg space-y-4 min-h-[180px] flex flex-col justify-between">
-        <div className="text-xs uppercase tracking-wider font-extrabold text-emerald-100 flex items-center justify-between">
+      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4 min-h-[180px] flex flex-col justify-between">
+        <div className="text-xs uppercase tracking-wider font-extrabold text-emerald-800 flex items-center justify-between">
           <span>Estimated Live Weight</span>
-          <span className="bg-white/20 px-2 py-0.5 rounded text-[10px]">Schaeffer Formula</span>
+          <span className="bg-white border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-full text-[10px]">Schaeffer Formula</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
+        <div className="grid grid-cols-2 gap-3 bg-white p-4 rounded-xl border border-emerald-100 shadow-sm">
           {/* Weight in KG */}
-          <div className="text-center border-r border-white/20 pr-2">
-            <span className="text-[11px] font-medium text-emerald-100 block">Kilograms (KG)</span>
-            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <div className="text-center border-r border-emerald-100 pr-2">
+            <span className="text-[11px] font-medium text-emerald-700 block">Kilograms (KG)</span>
+            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-900">
               {hasValidInput ? calculatedWeightKg.toFixed(1) : '--'}
             </span>
-            <span className="text-xs font-bold ml-1">kg</span>
+            <span className="text-xs font-bold ml-1 text-emerald-700">kg</span>
           </div>
 
           {/* Weight in Maund */}
           <div className="text-center pl-2">
-            <span className="text-[11px] font-medium text-emerald-100 block">মণ</span>
-            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <span className="text-[11px] font-medium text-emerald-700 block">মণ</span>
+            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-900">
               {hasValidInput ? (calculatedWeightKg / 40).toFixed(2) : '--'}
             </span>
-            <span className="text-xs font-bold ml-1">মণ</span>
+            <span className="text-xs font-bold ml-1 text-emerald-700">মণ</span>
           </div>
         </div>
 
         {/* Additional Units Breakdown */}
-        <div className="flex justify-between items-center text-xs text-emerald-100/90 pt-1 px-1">
+        <div className="flex justify-between items-center text-xs text-emerald-700 pt-1 px-1">
           <span>
             Weight in Pounds:{' '}
-            <strong>{hasValidInput ? `${calculatedWeightLbs.toFixed(1)} Lbs` : '--'}</strong>
+            <strong className="text-emerald-900">{hasValidInput ? `${calculatedWeightLbs.toFixed(1)} Lbs` : '--'}</strong>
           </span>
           <span>1 মণ = 40 KG</span>
         </div>

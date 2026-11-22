@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst } from '../../lib/offline';
 import { Loader2 } from 'lucide-react';
 
 export interface FatteningCowData {
@@ -47,37 +48,43 @@ export default function CalculatorFattening({ onSaveAndNext, initialData }: Calc
 
   const fetchFatteningFeeds = async () => {
     setLoadingFeeds(true);
-    try {
-      const { data, error } = await supabase
-        .from('nourish_feeds')
-        .select('id, name')
-        .ilike('category', 'fattening');
-
-      if (error) throw error;
-      setFeedList(data || []);
-    } catch (err) {
-      console.error('Error fetching Fattening feeds:', err);
-    } finally {
-      setLoadingFeeds(false);
-    }
+    await loadCachedFirst<FeedOption[]>(
+      'nourish_feeds:fattening',
+      async () => {
+        const { data, error } = await supabase
+          .from('nourish_feeds')
+          .select('id, name')
+          .ilike('category', 'fattening');
+        if (error) {
+          console.error('Error fetching Fattening feeds:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setFeedList(rows),
+      () => setLoadingFeeds(false),
+    );
   };
 
   const fetchFatteningBreeds = async () => {
     setLoadingBreeds(true);
-    try {
-      const { data, error } = await supabase
-        .from('breeds')
-        .select('id, name')
-        .ilike('category', 'fattening')
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setBreedList(data || []);
-    } catch (err) {
-      console.error('Error fetching Fattening breeds:', err);
-    } finally {
-      setLoadingBreeds(false);
-    }
+    await loadCachedFirst<BreedOption[]>(
+      'breeds:fattening',
+      async () => {
+        const { data, error } = await supabase
+          .from('breeds')
+          .select('id, name')
+          .ilike('category', 'fattening')
+          .order('name', { ascending: true });
+        if (error) {
+          console.error('Error fetching Fattening breeds:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setBreedList(rows),
+      () => setLoadingBreeds(false),
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {

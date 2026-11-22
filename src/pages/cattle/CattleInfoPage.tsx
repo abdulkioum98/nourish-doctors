@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { loadCachedFirst } from '../../lib/offline';
 import { Loader2 } from 'lucide-react';
 
 export interface CowData {
@@ -57,37 +58,43 @@ export default function CattleInfoPage({ onSaveAndNext, initialData }: CattleInf
 
   const fetchDairyFeeds = async () => {
     setLoadingFeeds(true);
-    try {
-      const { data, error } = await supabase
-        .from('nourish_feeds')
-        .select('id, name')
-        .ilike('category', 'dairy');
-
-      if (error) throw error;
-      setFeedList(data || []);
-    } catch (err) {
-      console.error('Error fetching Dairy feeds:', err);
-    } finally {
-      setLoadingFeeds(false);
-    }
+    await loadCachedFirst<FeedOption[]>(
+      'nourish_feeds:dairy',
+      async () => {
+        const { data, error } = await supabase
+          .from('nourish_feeds')
+          .select('id, name')
+          .ilike('category', 'dairy');
+        if (error) {
+          console.error('Error fetching Dairy feeds:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setFeedList(rows),
+      () => setLoadingFeeds(false),
+    );
   };
 
   const fetchDairyBreeds = async () => {
     setLoadingBreeds(true);
-    try {
-      const { data, error } = await supabase
-        .from('breeds')
-        .select('id, name')
-        .ilike('category', 'dairy')
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setBreedList(data || []);
-    } catch (err) {
-      console.error('Error fetching Dairy breeds:', err);
-    } finally {
-      setLoadingBreeds(false);
-    }
+    await loadCachedFirst<BreedOption[]>(
+      'breeds:dairy',
+      async () => {
+        const { data, error } = await supabase
+          .from('breeds')
+          .select('id, name')
+          .ilike('category', 'dairy')
+          .order('name', { ascending: true });
+        if (error) {
+          console.error('Error fetching Dairy breeds:', error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setBreedList(rows),
+      () => setLoadingBreeds(false),
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {

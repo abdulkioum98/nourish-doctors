@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
+import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, BarChart3, Search } from 'lucide-react';
 
 interface LayerStandardData {
@@ -14,9 +15,6 @@ interface LayerStandardData {
   egg_weight?: number;
 }
 
-// মেমোরি ক্যাশ ভেরিয়েবল (যাতে পেজ পরিবর্তন করে ফিরে আসলে আবার লোড না হতে হয়)
-let layerStandardsCache: LayerStandardData[] | null = null;
-
 export default function LayerStandard() {
   const [standards, setStandards] = useState<LayerStandardData[]>([]);
   const [filteredData, setFilteredData] = useState<LayerStandardData[]>([]);
@@ -29,7 +27,10 @@ export default function LayerStandard() {
   useEffect(() => {
     fetchLayerStandards();
 
-    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    // Realtime only when online — offline a channel just hangs / errors.
+    if (!shouldUseRealtime()) return;
+
+    // Supabase Realtime listener (auto-update when the database changes)
     const channel = supabase
       .channel(`${tableName}_realtime_changes`)
       .on(
@@ -37,8 +38,10 @@ export default function LayerStandard() {
         { event: '*', schema: 'public', table: tableName },
         (payload) => {
           console.log('Layer standards updated in database, refreshing cache...', payload);
-          layerStandardsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
-          fetchLayerStandards(false); // নতুন ডাটা ফেচ করা হচ্ছে
+          void fetchLayerStandardsRows().then((rows) => {
+            void setCached('layer_standards:all', rows);
+            setStandards(rows);
+          });
         }
       )
       .subscribe();
@@ -58,16 +61,9 @@ export default function LayerStandard() {
     setFilteredData(result);
   }, [selectedBreed, searchWeek, standards]);
 
-  const fetchLayerStandards = async (useCache = true) => {
-    // ১. যদি ক্যাশে ডেটা থাকে, তবে সুপাবেস কল না করে ক্যাশ থেকেই ডেটা লোড করব (ফাস্ট হবে)
-    if (useCache && layerStandardsCache) {
-      setStandards(layerStandardsCache);
-      setLoading(false);
-      return;
-    }
-
+  // Exact Supabase query, used both as the cache-first fetcher and on realtime events.
+  const fetchLayerStandardsRows = async (): Promise<LayerStandardData[]> => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
@@ -75,15 +71,24 @@ export default function LayerStandard() {
 
       if (error) {
         console.error('Error fetching layer standards:', error);
-      } else if (data) {
-        layerStandardsCache = data; // ক্যাশে সেভ করে রাখলাম
-        setStandards(data);
+        return [];
       }
+      return (data ?? []) as LayerStandardData[];
     } catch (err) {
       console.error('Unexpected error:', err);
-    } finally {
-      setLoading(false);
+      return [];
     }
+  };
+
+  const fetchLayerStandards = async () => {
+    await loadCachedFirst<LayerStandardData[]>(
+      'layer_standards:all',
+      fetchLayerStandardsRows,
+      (rows) => {
+        setStandards(rows);
+      },
+      () => setLoading(false),
+    );
   };
 
   if (loading && standards.length === 0) {
@@ -152,36 +157,6 @@ export default function LayerStandard() {
                 <th className="p-3.5 text-center">Egg Weight (g)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
-              {filteredData.length > 0 ? (
-                loading ? null : filteredData.map((row, index) => (
-                  <tr
-                    key={row.id || index}
-                    className={`${
-                      index % 2 === 0 ? 'bg-white' : 'bg-amber-50/40'
-                    } hover:bg-amber-100/60 transition-colors`}
-                  >
-                    <td className="p-3 text-center font-bold text-amber-800">{row.age_weeks} Weeks</td>
-                    <td className="p-3 text-center">{row.daily_feed_intake ?? '-'}</td>
-                    <td className="p-3 text-center">{row.cumulative_feed ?? '-'}</td>
-                    <td className="p-3 text-center font-medium">
-                      {row.body_weight_min} {row.body_weight_max && row.body_weight_min !== row.body_weight_max ? `- ${row.body_weight_max}` : ''}
-                    </td>
-                    <td className="p-3 text-center text-emerald-700 font-semibold">
-                      {row.egg_production_pct ? `${row.egg_production_pct}%` : '-'}
-                    </td>
-                    <td className="p-3 text-center">{row.egg_weight ? `${row.egg_weight}g` : '-'}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="text-center p-6 text-slate-400">
-                    No Data Available
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
               {filteredData.length > 0 ? (
                 loading ? null : filteredData.map((row, index) => (

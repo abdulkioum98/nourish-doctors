@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { isOnline, loadCachedFirst, setCached, shouldUseRealtime } from '../lib/offline';
 import { Shield, Clock, Mail, Laptop, Trash2 } from 'lucide-react';
 
 interface SessionUser {
@@ -49,9 +50,12 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
     );
   }
 
-  // ডাটা ফেচ করা এবং রিয়েল-টাইম সাবস্ক্রিপশন সেটআপ
+  // Data fetch (cache-first) and Realtime subscription setup
   useEffect(() => {
     fetchLogs();
+
+    // Realtime only when online — offline a channel just hangs / errors.
+    if (!shouldUseRealtime()) return;
 
     const channel = supabase
       .channel('public:user_logs')
@@ -79,28 +83,44 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
     };
   }, []);
 
+  // Exact Supabase query, used as the cache-first fetcher.
   async function fetchLogs() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('user_logs')
-      .select('*')
-      .order('created_at', { ascending: false });
+    await loadCachedFirst<UserLog[]>(
+      'user_logs:all',
+      async () => {
+        const { data, error } = await supabase
+          .from('user_logs')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setLogs(data as UserLog[]);
-    }
-    setLoading(false);
+        if (error) {
+          console.error('Error fetching user logs:', error);
+          return [];
+        }
+        return (data ?? []) as UserLog[];
+      },
+      (rows) => setLogs(rows),
+      () => setLoading(false),
+    );
   }
 
   const handleDeleteLog = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this log?')) return;
+
+    if (!isOnline()) {
+      alert('You are offline. Deleting logs needs internet.');
+      return;
+    }
 
     const { error } = await supabase.from('user_logs').delete().eq('id', id);
 
     if (error) {
       alert('Failed to delete log: ' + error.message);
     } else {
-      setLogs((prev) => prev.filter((log) => log.id !== id));
+      const remaining = logs.filter((log) => log.id !== id);
+      setLogs(remaining);
+      await setCached('user_logs:all', remaining);
     }
   };
 

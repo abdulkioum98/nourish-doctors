@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { 
-  Calculator, 
-  Wheat, 
-  Scale, 
-  Sparkles, 
-  Ruler, 
-  BarChart3, 
-  Fish, 
+import React from 'react';
+import {
+  Calculator,
+  Wheat,
+  Scale,
+  Sparkles,
+  Ruler,
+  BarChart3,
+  Fish,
   ChevronRight,
   ChevronDown,
   Award,
   BookOpen,
-  ShieldPlus
+  ShieldPlus,
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -25,28 +25,82 @@ interface DashboardProps {
   setActiveDropdowns: React.Dispatch<React.SetStateAction<any>>;
 }
 
+// Clean 3D tile tints — same light colours, much calmer:
+// plain light background (no gradient), thin border, one soft coloured
+// shadow + a light bottom edge for the lift. No glow, no extra badges.
+type TintKey = 'emerald' | 'amber' | 'cyan';
+
+const TINTS: Record<
+  TintKey,
+  {
+    tile: string;
+    iconBox: string;
+    iconHover: string;
+    title: string;
+    chevron: string;
+    subHover: string;
+    subIcon: string;
+  }
+> = {
+  emerald: {
+    tile:
+      'bg-emerald-50 border border-emerald-200/70 border-b-[3px] border-b-emerald-200 shadow-[0_10px_24px_-12px_rgba(16,185,129,0.45)]',
+    iconBox: 'bg-white border border-emerald-100',
+    iconHover: 'group-hover:bg-emerald-100',
+    title: 'text-emerald-950',
+    chevron: 'text-emerald-500',
+    subHover: 'hover:bg-emerald-100 hover:text-emerald-900',
+    subIcon: 'text-emerald-600',
+  },
+  amber: {
+    tile:
+      'bg-amber-50 border border-amber-200/70 border-b-[3px] border-b-amber-200 shadow-[0_10px_24px_-12px_rgba(245,158,11,0.45)]',
+    iconBox: 'bg-white border border-amber-100',
+    iconHover: 'group-hover:bg-amber-100',
+    title: 'text-amber-950',
+    chevron: 'text-amber-500',
+    subHover: 'hover:bg-amber-100 hover:text-amber-900',
+    subIcon: 'text-amber-600',
+  },
+  cyan: {
+    tile:
+      'bg-cyan-50 border border-cyan-200/70 border-b-[3px] border-b-cyan-200 shadow-[0_10px_24px_-12px_rgba(6,182,212,0.45)]',
+    iconBox: 'bg-white border border-cyan-100',
+    iconHover: 'group-hover:bg-cyan-100',
+    title: 'text-cyan-950',
+    chevron: 'text-cyan-500',
+    subHover: 'hover:bg-cyan-100 hover:text-cyan-900',
+    subIcon: 'text-cyan-600',
+  },
+};
+
+interface CardItem {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+}
+
 export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDropdowns }: DashboardProps) {
-  
   // ড্রপডাউন টগল করার সময় স্টেট আপডেট করা যাতে ব্যাক করলে বন্ধ না হয়ে যায়
   const toggleDropdown = (key: string) => {
     setActiveDropdowns((prev: any) => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: !prev[key],
     }));
   };
 
   // Cattle Tools
-  const cattleServices = [
-    { id: 'cattle-info', title: 'Cattle Ration Calculator', icon: <Calculator className="text-emerald-700" size={20} />, active: true },
-    { id: 'weight-measure', title: 'Live Weight Estimator', icon: <Scale className="text-emerald-700" size={20} />, active: true },
-    { id: 'nourish-feeds-reference', title: 'Nourish Cattle Feeds', icon: <Wheat className="text-emerald-700" size={20} />, active: true },
+  const cattleServices: CardItem[] = [
+    { id: 'cattle-info', title: 'Cattle Ration Calculator', icon: <Calculator className="text-emerald-700" size={20} /> },
+    { id: 'weight-measure', title: 'Live Weight Estimator', icon: <Scale className="text-emerald-700" size={20} /> },
+    { id: 'nourish-feeds-reference', title: 'Nourish Cattle Feeds', icon: <Wheat className="text-emerald-700" size={20} /> },
   ];
 
   // Poultry Main Tools
-  const poultryMainServices = [
-    { id: 'layer-light', title: 'Layer Lighting Calculator', icon: <Sparkles className="text-amber-700" size={20} />, active: true },
-    { id: 'poultry-uniformity', title: 'Uniformity Calculator', icon: <BarChart3 className="text-amber-700" size={20} />, active: true },
-    { id: 'poultry-space', title: 'Poultry Space Calculator', icon: <Ruler className="text-amber-700" size={20} />, active: true },
+  const poultryMainServices: CardItem[] = [
+    { id: 'layer-light', title: 'Layer Lighting Calculator', icon: <Sparkles className="text-amber-700" size={20} /> },
+    { id: 'poultry-uniformity', title: 'Uniformity Calculator', icon: <BarChart3 className="text-amber-700" size={20} /> },
+    { id: 'poultry-space', title: 'Poultry Space Calculator', icon: <Ruler className="text-amber-700" size={20} /> },
   ];
 
   const standardSubItems = [
@@ -72,261 +126,127 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     { id: 'nourish-sinking-fish', title: 'Sinking Fish Feeds' },
   ];
 
-  return (
-    <div className="min-h-screen py-6 px-4 flex flex-col items-center font-sans">
-      <div className="w-full max-w-md space-y-8">
-      
-        {/* ১. CATTLE SECTION */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-center space-x-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-900">
-              Cattle Tools
-            </h2>
-            <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
+  // One clean 3D card — always exactly one grid cell, never spans.
+  // Roomy: bigger padding, taller card, icon on top, title at the bottom.
+  const renderCard = (item: CardItem, tintKey: TintKey) => {
+    const tint = TINTS[tintKey];
+    return (
+      <button
+        key={item.id}
+        onClick={() => onSelectPage(item.id, activeDropdowns)}
+        className={`group rounded-3xl p-4 min-h-[112px] flex flex-col items-start justify-between gap-3 text-left cursor-pointer transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:border-b-2 ${tint.tile}`}
+      >
+        <div className={`p-2.5 rounded-2xl shadow-sm transition-colors ${tint.iconBox} ${tint.iconHover}`}>
+          {item.icon}
+        </div>
+        <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title}`}>
+          {item.title}
+        </span>
+      </button>
+    );
+  };
+
+  // One accordion — closed it is a normal half-width card like the others;
+  // open it spans both columns and shows its sub-items as plain rows.
+  const renderAccordion = (
+    key: 'standards' | 'vaccination' | 'feeds' | 'fish',
+    title: string,
+    icon: React.ReactNode,
+    tintKey: TintKey,
+    subItems: { id: string; title: string }[],
+  ) => {
+    const tint = TINTS[tintKey];
+    const open = activeDropdowns[key];
+    return (
+      <div
+        key={key}
+        className={`relative rounded-3xl transition-all duration-300 overflow-hidden ${tint.tile} hover:-translate-y-1 active:translate-y-0.5 active:border-b-2`}
+      >
+        <button
+          onClick={() => toggleDropdown(key)}
+          className="group w-full p-4 min-h-[112px] flex flex-col items-start justify-between gap-3 text-left cursor-pointer"
+        >
+          <div className={`p-2.5 rounded-2xl shadow-sm transition-colors shrink-0 ${tint.iconBox} ${tint.iconHover}`}>
+            {icon}
           </div>
+          <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title}`}>
+            {title}
+          </span>
+          <ChevronDown
+            size={18}
+            className={`absolute top-4 right-4 transition-transform duration-300 ${tint.chevron} ${
+              open ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
 
-          <div className="flex flex-col space-y-2.5">
-            {cattleServices.map((item) => (
+        {open && (
+          <div className="px-3 pb-3 pt-0 space-y-1.5 animate-fadeIn">
+            {subItems.map((sub) => (
               <button
-                key={item.id}
-                disabled={!item.active}
-                onClick={() => item.active && onSelectPage(item.id, activeDropdowns)}
-                className={`w-full p-3.5 rounded-xl border flex items-center justify-between transition-all duration-200 ${
-                  item.active
-                    ? 'bg-gradient-to-r from-emerald-50/80 to-teal-50/50 border-emerald-200/80 shadow-sm hover:shadow-md hover:border-emerald-500 cursor-pointer group'
-                    : 'bg-slate-50/70 border-slate-200/60 opacity-55 cursor-not-allowed'
-                }`}
+                key={sub.id}
+                onClick={() => onSelectPage(sub.id, activeDropdowns)}
+                className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-semibold text-slate-700 bg-white border border-slate-200/70 flex items-center justify-between gap-1.5 text-left leading-tight transition-all cursor-pointer shadow-sm ${tint.subHover}`}
               >
-                <div className="flex items-center space-x-3.5">
-                  <div className={`p-2 rounded-lg transition-colors ${
-                    item.active ? 'bg-white shadow-xs group-hover:bg-emerald-100' : 'bg-slate-200/50'
-                  }`}>
-                    {item.icon}
-                  </div>
-                  <span className={`font-bold text-xs sm:text-sm transition-colors text-left ${
-                    item.active ? 'text-slate-800 group-hover:text-emerald-900' : 'text-slate-500'
-                  }`}>
-                    {item.title}
-                  </span>
-                </div>
-
-                {item.active ? (
-                  <div className="bg-white/80 p-1 rounded-full text-emerald-700 group-hover:bg-emerald-700 group-hover:text-white transition-all shadow-xs shrink-0">
-                    <ChevronRight size={16} />
-                  </div>
-                ) : (
-                  <span className="text-[10px] bg-slate-200 text-slate-600 font-semibold px-2 py-0.5 rounded-md shrink-0">
-                    Soon
-                  </span>
-                )}
+                <span>{sub.title}</span>
+                <ChevronRight size={13} className={`shrink-0 ${tint.subIcon}`} />
               </button>
             ))}
           </div>
+        )}
+      </div>
+    );
+  };
+
+  // Two independent columns (masonry-style): a card growing in one column
+  // only pushes down the cards below it in THAT column — the other column
+  // never moves and never leaves an empty gap underneath its cards.
+  const renderTwoColumns = (blocks: React.ReactNode[]) => (
+    <div className="flex gap-4 items-start">
+      <div className="flex-1 flex flex-col gap-4">
+        {blocks.filter((_, i) => i % 2 === 0)}
+      </div>
+      <div className="flex-1 flex flex-col gap-4">
+        {blocks.filter((_, i) => i % 2 === 1)}
+      </div>
+    </div>
+  );
+
+  const sectionHeading = (dot: string, label: string, text: string) => (
+    <div className="flex items-center justify-center space-x-2">
+      <span className={`h-2 w-2 rounded-full ${dot}`}></span>
+      <h2 className={`text-xs font-bold uppercase tracking-widest ${text}`}>{label}</h2>
+      <span className={`h-2 w-2 rounded-full ${dot}`}></span>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen py-8 px-5 flex flex-col items-center font-sans">
+      <div className="w-full max-w-2xl space-y-10">
+        {/* ১. CATTLE SECTION */}
+        <section className="space-y-4">
+          {sectionHeading('bg-emerald-600', 'Cattle Tools', 'text-emerald-900')}
+          {renderTwoColumns(cattleServices.map((item) => renderCard(item, 'emerald')))}
         </section>
 
         {/* ২. POULTRY SECTION */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-center space-x-2">
-            <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-900">
-              Poultry Tools
-            </h2>
-            <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-          </div>
-
-          <div className="flex flex-col space-y-2.5">
-            {poultryMainServices.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => onSelectPage(item.id, activeDropdowns)}
-                className="w-full p-3.5 rounded-xl border bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm hover:shadow-md hover:border-amber-500 cursor-pointer flex items-center justify-between transition-all duration-200 group"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="p-2 rounded-lg bg-white shadow-xs group-hover:bg-amber-100 transition-colors">
-                    {item.icon}
-                  </div>
-                  <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-amber-900 transition-colors text-left">
-                    {item.title}
-                  </span>
-                </div>
-                <div className="bg-white/80 p-1 rounded-full text-amber-700 group-hover:bg-amber-700 group-hover:text-white transition-all shadow-xs shrink-0">
-                  <ChevronRight size={16} />
-                </div>
-              </button>
-            ))}
-
-            {/* Poultry Standards Accordion */}
-            <div className={`w-full rounded-xl border transition-all duration-300 overflow-hidden ${
-              activeDropdowns.standards ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
-            }`}>
-              <button
-                onClick={() => toggleDropdown('standards')}
-                className="w-full p-3.5 flex items-center justify-between cursor-pointer group"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="p-2 rounded-lg bg-white shadow-xs group-hover:bg-amber-100 transition-colors">
-                    <Award className="text-amber-700" size={20} />
-                  </div>
-                  <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-amber-900 transition-colors text-left">
-                    Poultry Standards
-                  </span>
-                </div>
-                <div className={`p-1 rounded-full transition-transform duration-300 ${
-                  activeDropdowns.standards ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
-                }`}>
-                  <ChevronDown size={16} />
-                </div>
-              </button>
-
-              {activeDropdowns.standards && (
-                <div className="px-3 pb-3 pt-1 space-y-2 animate-fadeIn">
-                  {standardSubItems.map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => onSelectPage(sub.id, activeDropdowns)}
-                      className="w-full py-2.5 px-3 pl-11 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-amber-100 hover:text-amber-900 border border-amber-200/60 flex items-center justify-between transition-all cursor-pointer shadow-2xs"
-                    >
-                      <span>{sub.title}</span>
-                      <ChevronRight size={14} className="text-amber-600" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Vaccination Schedule Accordion */}
-            <div className={`w-full rounded-xl border transition-all duration-300 overflow-hidden ${
-              activeDropdowns.vaccination ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
-            }`}>
-              <button
-                onClick={() => toggleDropdown('vaccination')}
-                className="w-full p-3.5 flex items-center justify-between cursor-pointer group"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="p-2 rounded-lg bg-white shadow-xs group-hover:bg-amber-100 transition-colors">
-                    <ShieldPlus className="text-amber-700" size={20} />
-                  </div>
-                  <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-amber-900 transition-colors text-left">
-                    Vaccination Schedule
-                  </span>
-                </div>
-                <div className={`p-1 rounded-full transition-transform duration-300 ${
-                  activeDropdowns.vaccination ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
-                }`}>
-                  <ChevronDown size={16} />
-                </div>
-              </button>
-
-              {activeDropdowns.vaccination && (
-                <div className="px-3 pb-3 pt-1 space-y-2 animate-fadeIn">
-                  {vaccinationSubItems.map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => onSelectPage(sub.id, activeDropdowns)}
-                      className="w-full py-2.5 px-3 pl-11 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-amber-100 hover:text-amber-900 border border-amber-200/60 flex items-center justify-between transition-all cursor-pointer shadow-2xs"
-                    >
-                      <span>{sub.title}</span>
-                      <ChevronRight size={14} className="text-amber-600" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Nourish Poultry Feeds Accordion */}
-            <div className={`w-full rounded-xl border transition-all duration-300 overflow-hidden ${
-              activeDropdowns.feeds ? 'bg-amber-50/90 border-amber-400 shadow-md' : 'bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-amber-200/80 shadow-sm'
-            }`}>
-              <button
-                onClick={() => toggleDropdown('feeds')}
-                className="w-full p-3.5 flex items-center justify-between cursor-pointer group"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="p-2 rounded-lg bg-white shadow-xs group-hover:bg-amber-100 transition-colors">
-                    <BookOpen className="text-amber-700" size={20} />
-                  </div>
-                  <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-amber-900 transition-colors text-left">
-                    Nourish Poultry Feeds
-                  </span>
-                </div>
-                <div className={`p-1 rounded-full transition-transform duration-300 ${
-                  activeDropdowns.feeds ? 'bg-amber-700 text-white rotate-180' : 'bg-white/80 text-amber-700 group-hover:bg-amber-700 group-hover:text-white shadow-xs'
-                }`}>
-                  <ChevronDown size={16} />
-                </div>
-              </button>
-
-              {activeDropdowns.feeds && (
-                <div className="px-3 pb-3 pt-1 space-y-2 animate-fadeIn">
-                  {feedSubItems.map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => onSelectPage(sub.id, activeDropdowns)}
-                      className="w-full py-2.5 px-3 pl-11 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-amber-100 hover:text-amber-900 border border-amber-200/60 flex items-center justify-between transition-all cursor-pointer shadow-2xs"
-                    >
-                      <span>{sub.title}</span>
-                      <ChevronRight size={14} className="text-amber-600" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </div>
+        <section className="space-y-4">
+          {sectionHeading('bg-amber-500', 'Poultry Tools', 'text-amber-900')}
+          {renderTwoColumns([
+            ...poultryMainServices.map((item) => renderCard(item, 'amber')),
+            renderAccordion('standards', 'Poultry Standards', <Award className="text-amber-700" size={20} />, 'amber', standardSubItems),
+            renderAccordion('vaccination', 'Vaccination Schedule', <ShieldPlus className="text-amber-700" size={20} />, 'amber', vaccinationSubItems),
+            renderAccordion('feeds', 'Nourish Poultry Feeds', <BookOpen className="text-amber-700" size={20} />, 'amber', feedSubItems),
+          ])}
         </section>
 
         {/* ৩. FISH / AQUA SECTION */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-center space-x-2">
-            <span className="h-2 w-2 rounded-full bg-cyan-600"></span>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-900">
-              Aqua Tools
-            </h2>
-            <span className="h-2 w-2 rounded-full bg-cyan-600"></span>
-          </div>
-
-          <div className="flex flex-col space-y-2.5">
-            <div className={`w-full rounded-xl border transition-all duration-300 overflow-hidden ${
-              activeDropdowns.fish ? 'bg-cyan-50/90 border-cyan-400 shadow-md' : 'bg-gradient-to-r from-cyan-50/80 to-sky-50/50 border-cyan-200/80 shadow-sm'
-            }`}>
-              <button
-                onClick={() => toggleDropdown('fish')}
-                className="w-full p-3.5 flex items-center justify-between cursor-pointer group"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="p-2 rounded-lg bg-white shadow-xs group-hover:bg-cyan-100 transition-colors">
-                    <Fish className="text-cyan-700" size={20} />
-                  </div>
-                  <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-cyan-900 transition-colors text-left">
-                    Nourish Fish Feeds
-                  </span>
-                </div>
-                <div className={`p-1 rounded-full transition-transform duration-300 ${
-                  activeDropdowns.fish ? 'bg-cyan-700 text-white rotate-180' : 'bg-white/80 text-cyan-700 group-hover:bg-cyan-700 group-hover:text-white shadow-xs'
-                }`}>
-                  <ChevronDown size={16} />
-                </div>
-              </button>
-
-              {activeDropdowns.fish && (
-                <div className="px-3 pb-3 pt-1 space-y-2 animate-fadeIn">
-                  {fishSubItems.map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => onSelectPage(sub.id, activeDropdowns)}
-                      className="w-full py-2.5 px-3 pl-11 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-cyan-100 hover:text-cyan-900 border border-cyan-200/60 flex items-center justify-between transition-all cursor-pointer shadow-2xs"
-                    >
-                      <span>{sub.title}</span>
-                      <ChevronRight size={14} className="text-cyan-600" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+        <section className="space-y-4">
+          {sectionHeading('bg-cyan-600', 'Aqua Tools', 'text-cyan-900')}
+          {renderTwoColumns([
+            renderAccordion('fish', 'Nourish Fish Feeds', <Fish className="text-cyan-700" size={20} />, 'cyan', fishSubItems),
+          ])}
         </section>
-
       </div>
     </div>
   );

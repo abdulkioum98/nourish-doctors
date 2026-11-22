@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '../supabaseClient';
+import { isOnline, queueLogout } from '../lib/offline';
 import {
   X,
   LogOut,
@@ -26,6 +27,13 @@ export default function Sidebar({
 }: SidebarProps) {
 
   const handleLogout = async () => {
+    if (!isOnline()) {
+      if (userEmail) await queueLogout(userEmail);
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      window.location.reload();
+      return;
+    }
+
     if (userEmail) {
       const { data: activeLogs } = await supabase
         .from('user_logs')
@@ -62,7 +70,11 @@ export default function Sidebar({
       }
     }
 
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    }
     window.location.reload();
   };
 

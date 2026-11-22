@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
+import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, Package, Search } from 'lucide-react';
 
 interface LayerFeedData {
@@ -18,9 +19,6 @@ interface LayerFeedData {
   price?: number;
 }
 
-// মেমোরি ক্যাশ ভেরিয়েবল (যাতে বারবার সুপাবেস কল করা না লাগে)
-let layerFeedsCache: LayerFeedData[] | null = null;
-
 export default function LayerFeed() {
   const [feeds, setFeeds] = useState<LayerFeedData[]>([]);
   const [filteredFeeds, setFilteredFeeds] = useState<LayerFeedData[]>([]);
@@ -32,7 +30,10 @@ export default function LayerFeed() {
   useEffect(() => {
     fetchLayerFeeds();
 
-    // সুপাবেস রিয়েলটাইম লিসেনার (ডাটাবেজে পরিবর্তন হলে অটোমেটিক আপডেট হবে)
+    // Realtime only when online — offline a channel just hangs / errors.
+    if (!shouldUseRealtime()) return;
+
+    // Supabase Realtime listener (auto-update when the database changes)
     const channel = supabase
       .channel(`${tableName}_realtime_changes`)
       .on(
@@ -40,8 +41,11 @@ export default function LayerFeed() {
         { event: '*', schema: 'public', table: tableName },
         (payload) => {
           console.log('Layer feeds updated in database, refreshing cache...', payload);
-          layerFeedsCache = null; // ক্যাশ ক্লিয়ার করে দেওয়া হলো
-          fetchLayerFeeds(false); // সরাসরি নতুন ডাটা ফেচ করা হচ্ছে
+          void fetchLayerFeedsRows().then((rows) => {
+            void setCached('layer_feeds:all', rows);
+            setFeeds(rows);
+            setFilteredFeeds(rows);
+          });
         }
       )
       .subscribe();
@@ -58,17 +62,9 @@ export default function LayerFeed() {
     setFilteredFeeds(result);
   }, [searchTerm, feeds]);
 
-  const fetchLayerFeeds = async (useCache = true) => {
-    // ১. ক্যাশে ডেটা থাকলে সেটি ব্যবহার করব, ফাস্ট হবে
-    if (useCache && layerFeedsCache) {
-      setFeeds(layerFeedsCache);
-      setFilteredFeeds(layerFeedsCache);
-      setLoading(false);
-      return;
-    }
-
+  // Exact Supabase query, used both as the cache-first fetcher and on realtime events.
+  const fetchLayerFeedsRows = async (): Promise<LayerFeedData[]> => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
@@ -76,16 +72,25 @@ export default function LayerFeed() {
 
       if (error) {
         console.error('Error fetching layer feeds:', error);
-      } else if (data) {
-        layerFeedsCache = data; // ক্যাশে সেভ করে রাখলাম
-        setFeeds(data);
-        setFilteredFeeds(data);
+        return [];
       }
+      return (data ?? []) as LayerFeedData[];
     } catch (err) {
       console.error('Unexpected error:', err);
-    } finally {
-      setLoading(false);
+      return [];
     }
+  };
+
+  const fetchLayerFeeds = async () => {
+    await loadCachedFirst<LayerFeedData[]>(
+      'layer_feeds:all',
+      fetchLayerFeedsRows,
+      (rows) => {
+        setFeeds(rows);
+        setFilteredFeeds(rows);
+      },
+      () => setLoading(false),
+    );
   };
 
   if (loading && feeds.length === 0) {

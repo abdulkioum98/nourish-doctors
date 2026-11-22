@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { isOnline, sendOrQueueUserLog } from '../lib/offline';
 import { Mail, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 
 interface EmailLoginProps {
@@ -18,6 +19,14 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
+
+    // OTP needs internet. A saved session skips this screen entirely,
+    // so offline users who already logged in never land here.
+    if (!isOnline()) {
+      setErrorMsg('You are offline. Please connect to the internet to log in.');
+      setLoading(false);
+      return;
+    }
 
     const formattedEmail = email.trim().toLowerCase();
 
@@ -81,20 +90,15 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
     } else if (data.session) {
       const deviceInfo = navigator.userAgent;
 
-      const { error: logError } = await supabase.from('user_logs').insert([
-        {
-          user_email: targetEmail,
-          otp_status: 'Verified',
-          is_logged_in: true,
-          login_time: new Date().toISOString(),
-          session_duration_minutes: 0,
-          device_info: deviceInfo, 
-        },
-      ]);
-
-      if (logError) {
-        console.error('Failed to save user log:', logError.message);
-      }
+      // Fire-and-forget: queued in Dexie when offline, never blocks login.
+      await sendOrQueueUserLog({
+        user_email: targetEmail,
+        otp_status: 'Verified',
+        is_logged_in: true,
+        login_time: new Date().toISOString(),
+        session_duration_minutes: 0,
+        device_info: deviceInfo,
+      });
 
       setLoading(false);
       onLoginSuccess();

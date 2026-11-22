@@ -8,4 +8,10 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  // Dev server reachable from the phone on the same Wi-Fi:
+  // `npm run dev` then open the Network URL (http://192.168.x.x:5173).
+  server: {
+    host: true,
+    port: 5173,
+  },
 })
