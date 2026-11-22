@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calculator, Copy, Check, Printer, RefreshCw, Award, Scale } from 'lucide-react';
+import { downloadTextAsPdf } from '../../lib/downloadPdf';
 
 export default function PoultryUniformityCalculator() {
   // Input States
@@ -107,9 +108,14 @@ export default function PoultryUniformityCalculator() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (totalBirds === 0) return;
-    window.print();
+    const ok = await downloadTextAsPdf(
+      `uniformity-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+      'Poultry Flock Uniformity Report',
+      generateReportText(),
+    );
+    if (!ok) alert('Could not create the PDF. Please try again.');
   };
 
   return (
@@ -252,7 +258,7 @@ export default function PoultryUniformityCalculator() {
               className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed"
             >
               <Printer size={14} />
-              <span>Print / PDF</span>
+              <span>Download PDF</span>
             </button>
           </div>
         </div>

@@ -126,15 +126,18 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     { id: 'nourish-sinking-fish', title: 'Sinking Fish Feeds' },
   ];
 
-  // One clean 3D card — always exactly one grid cell, never spans.
-  // Roomy: bigger padding, taller card, icon on top, title at the bottom.
-  const renderCard = (item: CardItem, tintKey: TintKey) => {
+  // One clean 3D card — single column, staggered: each section's cards are
+  // 62% wide (left edge to a bit past the middle, or the mirror of it),
+  // so one card per row and neighbours never move when an accordion opens.
+  const renderCard = (item: CardItem, tintKey: TintKey, align: 'left' | 'right') => {
     const tint = TINTS[tintKey];
     return (
       <button
         key={item.id}
         onClick={() => onSelectPage(item.id, activeDropdowns)}
-        className={`group rounded-3xl p-4 min-h-[112px] flex flex-col items-start justify-between gap-3 text-left cursor-pointer transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:border-b-2 ${tint.tile}`}
+        className={`group rounded-3xl p-4 min-h-[112px] w-[62%] ${
+          align === 'left' ? 'self-start' : 'self-end'
+        } flex flex-col items-start justify-between gap-3 text-left cursor-pointer transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:border-b-2 ${tint.tile}`}
       >
         <div className={`p-2.5 rounded-2xl shadow-sm transition-colors ${tint.iconBox} ${tint.iconHover}`}>
           {item.icon}
@@ -146,21 +149,25 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     );
   };
 
-  // One accordion — closed it is a normal half-width card like the others;
-  // open it spans both columns and shows its sub-items as plain rows.
+  // One accordion — closed it is a normal card like the others;
+  // open it grows in place inside its own 62% column and shows its
+  // sub-items as plain rows. Same alignment as its section.
   const renderAccordion = (
     key: 'standards' | 'vaccination' | 'feeds' | 'fish',
     title: string,
     icon: React.ReactNode,
     tintKey: TintKey,
     subItems: { id: string; title: string }[],
+    align: 'left' | 'right',
   ) => {
     const tint = TINTS[tintKey];
     const open = activeDropdowns[key];
     return (
       <div
         key={key}
-        className={`relative rounded-3xl transition-all duration-300 overflow-hidden ${tint.tile} hover:-translate-y-1 active:translate-y-0.5 active:border-b-2`}
+        className={`relative rounded-3xl transition-all duration-300 overflow-hidden w-[62%] ${
+          align === 'left' ? 'self-start' : 'self-end'
+        } ${tint.tile} hover:-translate-y-1 active:translate-y-0.5 active:border-b-2`}
       >
         <button
           onClick={() => toggleDropdown(key)}
@@ -198,20 +205,6 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     );
   };
 
-  // Two independent columns (masonry-style): a card growing in one column
-  // only pushes down the cards below it in THAT column — the other column
-  // never moves and never leaves an empty gap underneath its cards.
-  const renderTwoColumns = (blocks: React.ReactNode[]) => (
-    <div className="flex gap-4 items-start">
-      <div className="flex-1 flex flex-col gap-4">
-        {blocks.filter((_, i) => i % 2 === 0)}
-      </div>
-      <div className="flex-1 flex flex-col gap-4">
-        {blocks.filter((_, i) => i % 2 === 1)}
-      </div>
-    </div>
-  );
-
   const sectionHeading = (dot: string, label: string, text: string) => (
     <div className="flex items-center justify-center space-x-2">
       <span className={`h-2 w-2 rounded-full ${dot}`}></span>
@@ -223,29 +216,31 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
   return (
     <div className="min-h-screen py-8 px-5 flex flex-col items-center font-sans">
       <div className="w-full max-w-2xl space-y-10">
-        {/* ১. CATTLE SECTION */}
+        {/* ১. CATTLE SECTION — cards from the left edge to a bit past the middle */}
         <section className="space-y-4">
           {sectionHeading('bg-emerald-600', 'Cattle Tools', 'text-emerald-900')}
-          {renderTwoColumns(cattleServices.map((item) => renderCard(item, 'emerald')))}
+          <div className="flex flex-col gap-4">
+            {cattleServices.map((item) => renderCard(item, 'emerald', 'left'))}
+          </div>
         </section>
 
-        {/* ২. POULTRY SECTION */}
+        {/* ২. POULTRY SECTION — cards from the right edge to a bit past the middle */}
         <section className="space-y-4">
           {sectionHeading('bg-amber-500', 'Poultry Tools', 'text-amber-900')}
-          {renderTwoColumns([
-            ...poultryMainServices.map((item) => renderCard(item, 'amber')),
-            renderAccordion('standards', 'Poultry Standards', <Award className="text-amber-700" size={20} />, 'amber', standardSubItems),
-            renderAccordion('vaccination', 'Vaccination Schedule', <ShieldPlus className="text-amber-700" size={20} />, 'amber', vaccinationSubItems),
-            renderAccordion('feeds', 'Nourish Poultry Feeds', <BookOpen className="text-amber-700" size={20} />, 'amber', feedSubItems),
-          ])}
+          <div className="flex flex-col gap-4">
+            {poultryMainServices.map((item) => renderCard(item, 'amber', 'right'))}
+            {renderAccordion('standards', 'Poultry Standards', <Award className="text-amber-700" size={20} />, 'amber', standardSubItems, 'right')}
+            {renderAccordion('vaccination', 'Vaccination Schedule', <ShieldPlus className="text-amber-700" size={20} />, 'amber', vaccinationSubItems, 'right')}
+            {renderAccordion('feeds', 'Nourish Poultry Feeds', <BookOpen className="text-amber-700" size={20} />, 'amber', feedSubItems, 'right')}
+          </div>
         </section>
 
-        {/* ৩. FISH / AQUA SECTION */}
+        {/* ৩. FISH / AQUA SECTION — card from the left edge to a bit past the middle */}
         <section className="space-y-4">
           {sectionHeading('bg-cyan-600', 'Aqua Tools', 'text-cyan-900')}
-          {renderTwoColumns([
-            renderAccordion('fish', 'Nourish Fish Feeds', <Fish className="text-cyan-700" size={20} />, 'cyan', fishSubItems),
-          ])}
+          <div className="flex flex-col gap-4">
+            {renderAccordion('fish', 'Nourish Fish Feeds', <Fish className="text-cyan-700" size={20} />, 'cyan', fishSubItems, 'left')}
+          </div>
         </section>
       </div>
     </div>

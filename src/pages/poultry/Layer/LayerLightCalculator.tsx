@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calculator, Copy, Check, Printer, RefreshCw } from 'lucide-react';
 import { LayerLightingTab } from '../../../components/sidebars/Poultry/LayerLightingSidebar';
+import { downloadTextAsPdf } from '../../../lib/downloadPdf';
 
 // Props Interface to solve ts(2322) error
 interface LayerLightCalculatorProps {
@@ -68,8 +69,13 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    const ok = await downloadTextAsPdf(
+      `lighting-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+      'Layer Lighting Requirement Report',
+      generateReportText(),
+    );
+    if (!ok) alert('Could not create the PDF. Please try again.');
   };
 
   return (
@@ -222,7 +228,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
               className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
               <Printer size={14} />
-              <span>Print / PDF</span>
+              <span>Download PDF</span>
             </button>
           </div>
         </div>

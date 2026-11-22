@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { downloadTextAsPdf } from '../../lib/downloadPdf';
 import { supabase } from '../../supabaseClient';
 import { loadCachedFirst } from '../../lib/offline';
 import { Loader2, AlertCircle, Edit3, CheckCircle2, Download, Copy, X, Check } from 'lucide-react';
@@ -27,6 +28,7 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
   // Modal & Copy State
   const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
 
   useEffect(() => {
     fetchCalculatorData();
@@ -276,8 +278,15 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownloadPDF = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    setDownloadingPdf(true);
+    const ok = await downloadTextAsPdf(
+      `dairy-ration-${new Date().toISOString().slice(0, 10)}.pdf`,
+      'Ration Formulation Report',
+      generateFormattedText(),
+    );
+    setDownloadingPdf(false);
+    if (!ok) alert('Could not create the PDF. Please try again.');
   };
 
   if (loading) {
@@ -626,10 +635,11 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
           <div className="flex flex-col gap-2 pt-1">
             <button
               onClick={handleDownloadPDF}
-              className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+              disabled={downloadingPdf}
+              className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-400 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:cursor-not-allowed"
             >
               <Download size={16} />
-              <span>Download PDF</span>
+              <span>{downloadingPdf ? 'Preparing PDF...' : 'Download PDF'}</span>
             </button>
 
             <button

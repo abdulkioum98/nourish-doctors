@@ -1,0 +1,133 @@
+// Shared PDF download for the calculator pages.
+//
+// window.print() does nothing inside the Android app (Capacitor WebView has
+// no print dialog), so "Download PDF" / "Print / PDF" silently did nothing.
+// This builds a real PDF file from the same plain-text report the Copy
+// button already produces, then:
+//  - in the app: saves it to the cache folder and opens the Android share
+//    sheet, so the user can save it to Files / Drive / WhatsApp, or
+//  - in the browser: downloads it as a normal file.
+//
+// jsPDF's built-in fonts only cover Latin-1, so characters like ৳ or
+// Bengali script are normalised to plain ASCII first (৳ -> "Tk ").
+import { jsPDF } from 'jspdf';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
+
+function toPdfSafe(text: string): string {
+  const map: Record<string, string> = {
+    '৳': 'Tk ',
+    '•': '-',
+    '—': '-',
+    '–': '-',
+    '±': '+/-',
+    '²': '2',
+    '³': '3',
+    '°': 'deg',
+    '×': 'x',
+    '÷': '/',
+    '≈': '~',
+    '’': "'",
+    '‘': "'",
+    '“': '"',
+    '”': '"',
+    '…': '...',
+    '✓': 'v',
+    '✔': 'v',
+  };
+  let out = '';
+  for (const ch of text) {
+    if (map[ch] !== undefined) out += map[ch];
+    else if (ch.charCodeAt(0) < 128) out += ch;
+    // anything else (e.g. Bengali script) cannot render in the PDF font
+  }
+  return out;
+}
+
+// Some report lines pack several "• item" entries on one line
+// ("--- NUTRIENT REQUIREMENTS• DM ... • CP ..."). Split those into
+// one line per item so the PDF stays readable.
+function splitBullets(text: string): string[] {
+  const lines: string[] = [];
+  for (const raw of text.split('\n')) {
+    const parts = raw
+      .split('•')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length === 0) {
+      lines.push('');
+      continue;
+    }
+    if (raw.trimStart().startsWith('•')) {
+      parts.forEach((p) => lines.push(`- ${p}`));
+    } else {
+      lines.push(parts[0]);
+      parts.slice(1).forEach((p) => lines.push(`- ${p}`));
+    }
+  }
+  return lines;
+}
+
+function buildPdf(text: string, title: string): jsPDF {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const margin = 15;
+  const width = 210 - margin * 2;
+  const lineHeight = 6;
+  let y = 18;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text(toPdfSafe(title), margin, y);
+  y += 4;
+  doc.setDrawColor(16, 122, 87);
+  doc.setLineWidth(0.6);
+  doc.line(margin, y, 210 - margin, y);
+  y += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  for (const rawLine of splitBullets(text)) {
+    const line = toPdfSafe(rawLine);
+    const wrapped = doc.splitTextToSize(line || ' ', width);
+    for (const w of wrapped) {
+      if (y > 280) {
+        doc.addPage();
+        y = 18;
+      }
+      doc.text(w, margin, y);
+      y += lineHeight;
+    }
+  }
+  return doc;
+}
+
+/** Returns true when the PDF was created (and shared / downloaded). */
+export async function downloadTextAsPdf(
+  fileName: string,
+  title: string,
+  text: string,
+): Promise<boolean> {
+  try {
+    const doc = buildPdf(text, title);
+    if (Capacitor.isNativePlatform()) {
+      const base64 = doc.output('datauristring').split(',')[1];
+      const saved = await Filesystem.writeFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Cache,
+      });
+      await Share.share({
+        title,
+        url: saved.uri,
+        dialogTitle: 'Save or share PDF',
+      });
+      return true;
+    }
+    doc.save(fileName);
+    return true;
+  } catch (e) {
+    console.error('PDF download failed', e);
+    return false;
+  }
+}
