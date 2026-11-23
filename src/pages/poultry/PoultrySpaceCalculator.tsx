@@ -29,12 +29,12 @@ export default function PoultrySpaceCalculator() {
   const layerCageSummer = totalArea > 0 ? Math.floor(totalArea / 0.6) : 0;
 
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 font-sans">
+    <div className="max-w-5xl mx-auto p-3 sm:p-6 space-y-3 sm:space-y-6 font-sans">
       {/* Header */}
       <div className="bg-gradient-to-r from-amber-700 via-amber-800 to-amber-950 rounded-3xl p-2 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           
-          <h1 className="text-2xl sm:text-3xl font-extrabold mt-2"> Poultry Space Calculator</h1>
+          <h1 className="text-xl sm:text-3xl font-extrabold mt-1 sm:mt-2"> Poultry Space Calculator</h1>
           
         </div>
         <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/10 hidden sm:block">
@@ -43,9 +43,9 @@ export default function PoultrySpaceCalculator() {
       </div>
 
       {/* Input Section */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-amber-100 grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div className="bg-white rounded-3xl p-3 sm:p-6 shadow-sm border border-amber-100 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
         <div>
-          <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-2">
+          <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1 sm:mb-2">
             Shed Length (Feet)
           </label>
           <input
@@ -53,12 +53,12 @@ export default function PoultrySpaceCalculator() {
             placeholder="e.g. 50"
             value={length}
             onChange={(e) => setLength(e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-800 text-sm font-medium focus:outline-none focus:border-amber-600 transition-all"
+            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 sm:px-4 py-2 sm:py-3 text-slate-800 text-sm font-medium focus:outline-none focus:border-amber-600 transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-2">
+          <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1 sm:mb-2">
             Shed Width (Feet)
           </label>
           <input
@@ -66,28 +66,28 @@ export default function PoultrySpaceCalculator() {
             placeholder="e.g. 20"
             value={width}
             onChange={(e) => setWidth(e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-800 text-sm font-medium focus:outline-none focus:border-amber-600 transition-all"
+            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 sm:px-4 py-2 sm:py-3 text-slate-800 text-sm font-medium focus:outline-none focus:border-amber-600 transition-all"
           />
         </div>
       </div>
 
       {/* Total Area Overview */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-3xl p-5 flex items-center justify-between text-amber-900 shadow-sm">
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-3xl p-3 sm:p-5 flex items-center justify-between text-amber-900 shadow-sm">
         <div className="flex items-center space-x-4">
-          <div className="bg-amber-200/70 p-3 rounded-2xl">
+          <div className="bg-amber-200/70 p-2 sm:p-3 rounded-2xl">
             <Home size={26} className="text-amber-800" />
           </div>
           <div>
             <p className="text-xs text-amber-700 uppercase tracking-wider font-bold">Total Floor Area</p>
-            <p className="text-xl sm:text-2xl font-black">{totalArea} <span className="text-sm font-semibold">Sq. Feet</span></p>
+            <p className="text-lg sm:text-2xl font-black">{totalArea} <span className="text-sm font-semibold">Sq. Feet</span></p>
           </div>
         </div>
       </div>
 
       {/* Results Grid - Showing Winter & Summer Together */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
         {/* Broiler 0-2 Weeks */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-amber-300 transition-all space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-amber-300 transition-all space-y-4">
           <div>
             <span className="inline-block px-3 py-1 bg-amber-100 text-amber-900 text-xs font-bold rounded-xl mb-1">
               Broiler (0-2 Weeks)
@@ -114,7 +114,7 @@ export default function PoultrySpaceCalculator() {
         </div>
 
         {/* Broiler 3-5 Weeks */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-amber-300 transition-all space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-amber-300 transition-all space-y-4">
           <div>
             <span className="inline-block px-3 py-1 bg-amber-100 text-amber-900 text-xs font-bold rounded-xl mb-1">
               Broiler (3-5 Weeks)
@@ -141,7 +141,7 @@ export default function PoultrySpaceCalculator() {
         </div>
 
         {/* Sonali Chicken */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-teal-300 transition-all space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-teal-300 transition-all space-y-4">
           <div>
             <span className="inline-block px-3 py-1 bg-teal-100 text-teal-900 text-xs font-bold rounded-xl mb-1">
               Sonali Chicken
@@ -168,7 +168,7 @@ export default function PoultrySpaceCalculator() {
         </div>
 
         {/* Layer (Floor System) */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-indigo-300 transition-all space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-indigo-300 transition-all space-y-4">
           <div>
             <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-900 text-xs font-bold rounded-xl mb-1">
               Layer (Floor System)
@@ -195,7 +195,7 @@ export default function PoultrySpaceCalculator() {
         </div>
 
         {/* Layer (Cage System) */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-purple-300 transition-all space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:border-purple-300 transition-all space-y-4">
           <div>
             <span className="inline-block px-3 py-1 bg-purple-100 text-purple-900 text-xs font-bold rounded-xl mb-1">
               Layer (Cage System)

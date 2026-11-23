@@ -79,7 +79,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 p-4 sm:p-6 bg-slate-50 min-h-screen">
+    <div className="w-full max-w-4xl mx-auto space-y-3 sm:space-y-6 p-3 sm:p-6 bg-slate-50 min-h-screen">
       {/* CSS PRINT STYLES */}
       <style>{`
         @media print {
@@ -94,10 +94,10 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
       `}</style>
 
       {/* MAIN CALCULATOR GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 no-print">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-6 no-print">
         
         {/* LEFT COLUMN: INPUT FORM */}
-        <div className="md:col-span-7 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
+        <div className="md:col-span-7 bg-white p-3 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-2.5 sm:space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <Calculator size={18} className="text-amber-600" />
@@ -113,7 +113,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Length (ft)</label>
               <input
@@ -121,7 +121,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
                 min="0"
                 value={lengthFt}
                 onChange={(e) => setLengthFt(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full border border-slate-300 rounded-lg p-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full border border-slate-300 rounded-lg p-1.5 sm:p-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="50"
               />
             </div>
@@ -133,13 +133,13 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
                 min="0"
                 value={widthFt}
                 onChange={(e) => setWidthFt(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full border border-slate-300 rounded-lg p-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full border border-slate-300 rounded-lg p-1.5 sm:p-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="24"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Target Lux</label>
               <input
@@ -147,7 +147,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
                 min="0"
                 value={targetLux}
                 onChange={(e) => setTargetLux(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full border border-slate-300 rounded-lg p-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full border border-slate-300 rounded-lg p-1.5 sm:p-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="30-40"
               />
               <span className="text-[10px] text-slate-500 mt-0.5 block">Laying: 30-40 Lux recommended</span>
@@ -160,7 +160,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
                 min="1"
                 value={lumenPerBulb}
                 onChange={(e) => setLumenPerBulb(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full border border-slate-300 rounded-lg p-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full border border-slate-300 rounded-lg p-1.5 sm:p-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="500"
               />
               <span className="text-[10px] text-slate-500 mt-0.5 block">Common: 400 / 500 / 600 Lumen</span>
@@ -168,7 +168,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
           </div>
 
           {/* QUICK LUX GUIDE */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 space-y-1">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 sm:p-3 text-xs text-amber-900 space-y-1">
             <span className="font-bold block">💡 Recommended Lux Guide:</span>
             <ul className="list-disc list-inside space-y-0.5 text-[11px] text-amber-800">
               <li>Brooding Period: 20 – 40 Lux</li>
@@ -179,31 +179,31 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
         </div>
 
         {/* RIGHT COLUMN: CALCULATION RESULTS */}
-        <div className="md:col-span-5 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div className="space-y-4">
+        <div className="md:col-span-5 bg-white p-3 sm:p-6 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div className="space-y-2.5 sm:space-y-4">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">
               Calculation Output
             </h2>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-lg border border-slate-100">
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex justify-between items-center text-xs p-1.5 sm:p-2 bg-slate-50 rounded-lg border border-slate-100">
                 <span className="text-slate-600 font-medium">Shed Area (sq ft):</span>
                 <span className="font-bold text-slate-800">{areaSqFt.toFixed(2)} sq ft</span>
               </div>
 
-              <div className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="flex justify-between items-center text-xs p-1.5 sm:p-2 bg-slate-50 rounded-lg border border-slate-100">
                 <span className="text-slate-600 font-medium">Shed Area (m²):</span>
                 <span className="font-bold text-slate-800">{areaSqM.toFixed(2)} m²</span>
               </div>
 
-              <div className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="flex justify-between items-center text-xs p-1.5 sm:p-2 bg-slate-50 rounded-lg border border-slate-100">
                 <span className="text-slate-600 font-medium">Total Required Lumens:</span>
                 <span className="font-bold text-amber-700">{totalLumenReq.toFixed(1)} lm</span>
               </div>
 
-              <div className="p-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-xl text-center space-y-1">
+              <div className="p-2.5 sm:p-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-xl text-center space-y-0.5 sm:space-y-1">
                 <span className="text-xs font-extrabold uppercase tracking-wide text-amber-900 block">Required Light Bulbs</span>
-                <div className="text-3xl font-black text-amber-700">
+                <div className="text-2xl sm:text-3xl font-black text-amber-700">
                   {reqBulbs} <span className="text-base font-bold text-amber-900">Bulbs</span>
                 </div>
                 <span className="text-[11px] font-medium text-slate-600 block">
@@ -214,7 +214,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
           </div>
 
           {/* ACTION BUTTONS */}
-          <div className="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100">
+          <div className="grid grid-cols-2 gap-2 pt-2.5 sm:pt-4 border-t border-slate-100">
             <button
               onClick={handleCopy}
               className="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
@@ -236,7 +236,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
       </div>
 
       {/* FORMULA REFERENCE BOARD */}
-      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-3 no-print">
+      <div className="bg-white p-3 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-2 sm:space-y-3 no-print">
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">
           Formula Reference & Steps
         </h3>
@@ -283,7 +283,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
 
           <div className="border-2 border-amber-600 bg-amber-50 rounded p-4 text-center">
             <p className="text-xs uppercase font-bold text-amber-900">Recommended Total Light Bulbs</p>
-            <p className="text-3xl font-black text-amber-700 my-1">{reqBulbs} Bulbs</p>
+            <p className="text-2xl sm:text-3xl font-black text-amber-700 my-1">{reqBulbs} Bulbs</p>
           </div>
         </div>
       </div>

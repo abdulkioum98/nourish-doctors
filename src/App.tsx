@@ -270,6 +270,13 @@ export default function App() {
       setPageHistory((prev) => [...prev, currentPage]);
     }
     setCurrentPage(newPage);
+    // A new page always opens from the top (e.g. a calculator opens with
+    // its inputs first, not scrolled down to the result). Returning home
+    // is the only case that restores the saved scroll position (see the
+    // effect above).
+    if (newPage !== 'home') {
+      window.scrollTo(0, 0);
+    }
   };
 
   const handleSidebarNavigate = (id: string, label: string) => {
@@ -675,7 +682,7 @@ export default function App() {
           >
             <h3 className="text-base font-bold text-slate-900">Close the app?</h3>
             <p className="text-sm text-slate-600">
-              Are you sure you want to exit the Ration Calculator?
+              Are you sure you want to exit Nourish Doctors?
             </p>
             <div className="flex gap-3">
               <button

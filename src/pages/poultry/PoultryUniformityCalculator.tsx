@@ -119,7 +119,7 @@ export default function PoultryUniformityCalculator() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 p-4 sm:p-6 bg-slate-50 min-h-screen">
+    <div className="w-full max-w-4xl mx-auto space-y-3 sm:space-y-6 p-3 sm:p-6 bg-slate-50 min-h-screen">
       {/* CSS PRINT STYLES */}
       <style>{`
         @media print {
@@ -134,10 +134,10 @@ export default function PoultryUniformityCalculator() {
       `}</style>
 
       {/* MAIN CALCULATOR GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 no-print">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-6 no-print">
         
         {/* LEFT COLUMN: INPUT WEIGHTS */}
-        <div className="md:col-span-7 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
+        <div className="md:col-span-7 bg-white p-3 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-2.5 sm:space-y-4">
           <div className="flex justify-between items-center border-b border-slate-100 pb-2">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <Calculator size={18} className="text-amber-600" />
@@ -170,7 +170,7 @@ export default function PoultryUniformityCalculator() {
               value={weightsInput}
               onChange={(e) => setWeightsInput(e.target.value)}
               placeholder={unit === 'g' ? "e.g. 1250, 1300, 1180, 1220, 1270..." : "e.g. 1.25, 1.30, 1.18, 1.22, 1.27..."}
-              className="w-full border border-slate-300 rounded-lg p-3 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 leading-relaxed"
+              className="w-full border border-slate-300 rounded-lg p-2 sm:p-3 text-sm font-mono h-24 sm:h-auto text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 leading-relaxed"
             />
             <div className="flex justify-between items-center mt-1 text-[11px] text-slate-500">
               <span>Total Birds Inputted: <b className="text-slate-800">{totalBirds}</b></span>
@@ -189,14 +189,14 @@ export default function PoultryUniformityCalculator() {
         </div>
 
         {/* RIGHT COLUMN: RESULT BOARD */}
-        <div className="md:col-span-5 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div className="space-y-4">
+        <div className="md:col-span-5 bg-white p-3 sm:p-6 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div className="space-y-2.5 sm:space-y-4">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">
               Calculation Output
             </h2>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-lg border border-slate-100">
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex justify-between items-center text-xs p-1.5 sm:p-2 bg-slate-50 rounded-lg border border-slate-100">
                 <span className="text-slate-600 font-medium">Average Weight:</span>
                 <div className="text-right">
                   <span className="font-bold text-slate-900 text-sm block">
@@ -208,7 +208,7 @@ export default function PoultryUniformityCalculator() {
                 </div>
               </div>
 
-              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
+              <div className="p-2 sm:p-2.5 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-600 font-medium">±10% Weight Range:</span>
                   <span className="font-bold text-amber-800">
@@ -221,7 +221,7 @@ export default function PoultryUniformityCalculator() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="flex justify-between items-center text-xs p-1.5 sm:p-2 bg-slate-50 rounded-lg border border-slate-100">
                 <span className="text-slate-600 font-medium">Birds in Range:</span>
                 <span className="font-bold text-slate-800">
                   {totalBirds > 0 ? `${birdsInRange} / ${totalBirds} birds` : '0 / 0 birds'}
@@ -229,9 +229,9 @@ export default function PoultryUniformityCalculator() {
               </div>
 
               {/* MAIN RESULT DISPLAY */}
-              <div className="p-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-xl text-center space-y-1.5">
+              <div className="p-2.5 sm:p-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-xl text-center space-y-1 sm:space-y-1.5">
                 <span className="text-xs font-extrabold uppercase tracking-wide text-amber-900 block">Flock Uniformity</span>
-                <div className="text-4xl font-black text-amber-700">
+                <div className="text-3xl sm:text-4xl font-black text-amber-700">
                   {totalBirds > 0 ? `${uniformityPct.toFixed(1)}%` : '0.0%'}
                 </div>
                 <div className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${status.color}`}>
@@ -242,7 +242,7 @@ export default function PoultryUniformityCalculator() {
           </div>
 
           {/* ACTION BUTTONS */}
-          <div className="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100 mt-4">
+          <div className="grid grid-cols-2 gap-2 pt-2.5 sm:pt-4 border-t border-slate-100 mt-4">
             <button
               onClick={handleCopy}
               disabled={totalBirds === 0}
@@ -266,7 +266,7 @@ export default function PoultryUniformityCalculator() {
       </div>
 
       {/* RATING REFERENCE TABLE */}
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1.5 no-print">
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 sm:p-3 text-xs space-y-1 sm:space-y-1.5 no-print">
         <span className="font-bold text-slate-800 flex items-center gap-1">
           <Award size={14} className="text-amber-600" /> Standard Uniformity Target:
         </span>
@@ -279,7 +279,7 @@ export default function PoultryUniformityCalculator() {
       </div>
 
       {/* FORMULA REFERENCE BOARD */}
-      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-3 no-print">
+      <div className="bg-white p-3 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-2 sm:space-y-3 no-print">
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
           <Scale size={16} className="text-amber-700" />
           <span>±10% Method Step-by-Step Calculation Formula</span>

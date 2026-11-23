@@ -3,10 +3,12 @@
 // window.print() does nothing inside the Android app (Capacitor WebView has
 // no print dialog), so "Download PDF" / "Print / PDF" silently did nothing.
 // This builds a real PDF file from the report text, then:
-//  - in the app: saves it to the cache folder and opens it with the
-//    phone's PDF viewer ("Open with" app chooser — Drive PDF Viewer,
-//    Chrome, etc.). No share sheet: the file is saved, then the viewer
-//    opens it directly.
+//  - in the app: saves it FIRST to the phone's Documents folder (Files
+//    app > Documents — real local storage, so the file stays on the phone
+//    and can be found later), and only after the save succeeds opens it
+//    with the phone's PDF viewer ("Open with" app chooser — Drive PDF
+//    Viewer, Chrome, etc.). No share sheet: the file is saved, then the
+//    viewer opens it directly.
 //  - in the browser: downloads it as a normal file.
 //
 // jsPDF's built-in fonts only cover Latin-1, so characters like ৳ or
@@ -113,11 +115,27 @@ export async function downloadTextAsPdf(
     const doc = buildPdf(text, title);
     if (Capacitor.isNativePlatform()) {
       const base64 = doc.output('datauristring').split(',')[1];
-      const saved = await Filesystem.writeFile({
-        path: fileName,
-        data: base64,
-        directory: Directory.Cache,
-      });
+      // Save FIRST to the phone's Documents folder, so the PDF is really
+      // in local storage before anything opens. Only after the save
+      // succeeds does the viewer ("Open with") open.
+      let saved: { uri: string };
+      try {
+        saved = await Filesystem.writeFile({
+          path: fileName,
+          data: base64,
+          directory: Directory.Documents,
+        });
+      } catch (documentsError) {
+        // Some devices block the public Documents folder — fall back to
+        // the app cache so the PDF still opens, and say so plainly.
+        console.warn('Could not save PDF to Documents, using cache', documentsError);
+        alert('Could not save the PDF to Documents. Opening a temporary copy instead.');
+        saved = await Filesystem.writeFile({
+          path: fileName,
+          data: base64,
+          directory: Directory.Cache,
+        });
+      }
       // Save is done; open the PDF in a viewer app (shows the "Open with"
       // chooser with the phone's PDF apps). If no PDF viewer is installed
       // this throws and the caller shows the "no viewer" message.
