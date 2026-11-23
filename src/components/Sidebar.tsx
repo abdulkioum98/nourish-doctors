@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { isOnline, queueLogout } from '../lib/offline';
+import { isOnline, queueLogout, refreshDataNow, getLastDataUpdated } from '../lib/offline';
+import { Capacitor } from '@capacitor/core';
 import {
   X,
   LogOut,
   Mail,
   Home,
   ShieldAlert,
-  Users
+  Users,
+  RefreshCw,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +27,51 @@ export default function Sidebar({
   activeId = 'home',
   userEmail
 }: SidebarProps) {
+
+  const [updating, setUpdating] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(() =>
+    getLastDataUpdated(),
+  );
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+
+  // The timestamp may have changed while the sidebar was closed.
+  useEffect(() => {
+    if (isOpen) setLastUpdated(getLastDataUpdated());
+  }, [isOpen]);
+
+  const formatLastUpdated = (ts: number | null): string => {
+    if (!ts) return 'not yet';
+    return new Date(ts).toLocaleString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const handleUpdateData = async () => {
+    if (updating) return;
+    if (!isOnline()) {
+      setUpdateMsg('You are offline. Data will update when you are back online.');
+      return;
+    }
+    setUpdateMsg(null);
+    setUpdating(true);
+    const ok = await refreshDataNow();
+    setUpdating(false);
+    if (!ok) {
+      setUpdateMsg('You are offline. Data will update when you are back online.');
+      return;
+    }
+    setLastUpdated(getLastDataUpdated());
+    setUpdateMsg('Data updated.');
+    // Browser only: reload so a new Vercel/hosting deploy is picked up.
+    // The APK bundles its own web files, so a reload changes nothing there.
+    if (!Capacitor.isNativePlatform()) {
+      setTimeout(() => window.location.reload(), 700);
+    }
+  };
 
   const handleLogout = async () => {
     if (!isOnline()) {
@@ -177,6 +224,26 @@ export default function Sidebar({
               </div>
             </div>
           )}
+
+          {/* Update Data — manual sync with online */}
+          <div>
+            <button
+              onClick={handleUpdateData}
+              disabled={updating}
+              className="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white py-2.5 px-3 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.99]"
+            >
+              <RefreshCw size={15} className={updating ? 'animate-spin' : ''} />
+              <span>{updating ? 'Updating...' : 'Update Data'}</span>
+            </button>
+            <p className="text-[10px] text-slate-400 text-center font-medium mt-1.5">
+              Last updated: {formatLastUpdated(lastUpdated)}
+            </p>
+            {updateMsg && (
+              <p className="text-[10px] text-center font-medium mt-1 text-amber-600">
+                {updateMsg}
+              </p>
+            )}
+          </div>
 
           <button
             onClick={handleLogout}

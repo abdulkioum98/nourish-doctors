@@ -397,6 +397,37 @@ export async function processOutbox(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Manual "Update Data" (sidebar button). Re-pulls every reference table from
+// Supabase into the offline cache and flushes queued user_logs, then records
+// when it happened so the sidebar can show "Last updated: ...".
+// Offline it does nothing and returns false — the app keeps running from
+// the cache, exactly as before.
+// ---------------------------------------------------------------------------
+const LAST_DATA_UPDATED_KEY = 'nourish-last-data-updated';
+
+export function getLastDataUpdated(): number | null {
+  try {
+    const raw = localStorage.getItem(LAST_DATA_UPDATED_KEY);
+    const n = raw ? Number(raw) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshDataNow(): Promise<boolean> {
+  if (!isOnline()) return false;
+  await syncAllReferenceData();
+  await processOutbox();
+  try {
+    localStorage.setItem(LAST_DATA_UPDATED_KEY, String(Date.now()));
+  } catch {
+    // Timestamp loss is harmless; the data itself was still refreshed.
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // One-time wiring: 'online' event re-syncs reference data + flushes logs.
 // Call once from App. Safe to call repeatedly (guarded).
 // ---------------------------------------------------------------------------

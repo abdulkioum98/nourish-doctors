@@ -139,7 +139,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
         onClick={() => onSelectPage(item.id, activeDropdowns)}
         className={`group rounded-3xl p-3 min-h-[88px] w-[calc(100%+36px)] ${
           align === 'left' ? '-ml-10' : 'ml-1'
-        } flex flex-col items-start justify-between gap-2 text-left cursor-pointer transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:border-b-2 ${tint.tile}`}
+        } flex flex-col ${align === 'left' ? 'items-end' : 'items-start'} justify-between gap-2 text-left cursor-pointer transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:border-b-2 ${tint.tile}`}
       >
         <div className={`p-2 rounded-2xl shadow-sm transition-colors ${tint.iconBox} ${tint.iconHover}`}>
           {item.icon}
@@ -177,7 +177,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
       >
         <button
           onClick={() => toggleDropdown(key)}
-          className="group w-full p-3 min-h-[88px] flex flex-col items-start justify-between gap-2 text-left cursor-pointer"
+          className={`group w-full p-3 min-h-[88px] flex flex-col ${align === 'left' ? 'items-end' : 'items-start'} justify-between gap-2 text-left cursor-pointer`}
         >
           <div className={`p-2 rounded-2xl shadow-sm transition-colors shrink-0 ${tint.iconBox} ${tint.iconHover}`}>
             {icon}
@@ -191,7 +191,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
           </span>
           <ChevronDown
             size={18}
-            className={`absolute top-3 right-3 transition-transform duration-300 ${tint.chevron} ${
+            className={`absolute ${align === 'left' ? 'top-3 left-3' : 'top-3 right-3'} transition-transform duration-300 ${tint.chevron} ${
               open ? 'rotate-180' : ''
             }`}
           />
