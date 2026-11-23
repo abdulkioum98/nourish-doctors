@@ -10,11 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor-community/file-opener": "^8.0.1",
     "@capacitor/android": "^8.5.1",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.1",
     "@capacitor/filesystem": "^8.1.5",
-    "@capacitor/share": "^8.0.3",
     "@supabase/supabase-js": "^2.112.4",
     "@tailwindcss/vite": "^4.3.3",
     "dexie": "^4.4.5",

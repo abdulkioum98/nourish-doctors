@@ -2,17 +2,18 @@
 //
 // window.print() does nothing inside the Android app (Capacitor WebView has
 // no print dialog), so "Download PDF" / "Print / PDF" silently did nothing.
-// This builds a real PDF file from the same plain-text report the Copy
-// button already produces, then:
-//  - in the app: saves it to the cache folder and opens the Android share
-//    sheet, so the user can save it to Files / Drive / WhatsApp, or
+// This builds a real PDF file from the report text, then:
+//  - in the app: saves it to the cache folder and opens it with the
+//    phone's PDF viewer ("Open with" app chooser — Drive PDF Viewer,
+//    Chrome, etc.). No share sheet: the file is saved, then the viewer
+//    opens it directly.
 //  - in the browser: downloads it as a normal file.
 //
 // jsPDF's built-in fonts only cover Latin-1, so characters like ৳ or
 // Bengali script are normalised to plain ASCII first (৳ -> "Tk ").
 import { jsPDF } from 'jspdf';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
+import { FileOpener } from '@capacitor-community/file-opener';
 import { Capacitor } from '@capacitor/core';
 
 function toPdfSafe(text: string): string {
@@ -102,7 +103,7 @@ function buildPdf(text: string, title: string): jsPDF {
   return doc;
 }
 
-/** Returns true when the PDF was created (and shared / downloaded). */
+/** Returns true when the PDF was created (and opened / downloaded). */
 export async function downloadTextAsPdf(
   fileName: string,
   title: string,
@@ -117,10 +118,12 @@ export async function downloadTextAsPdf(
         data: base64,
         directory: Directory.Cache,
       });
-      await Share.share({
-        title,
-        url: saved.uri,
-        dialogTitle: 'Save or share PDF',
+      // Save is done; open the PDF in a viewer app (shows the "Open with"
+      // chooser with the phone's PDF apps). If no PDF viewer is installed
+      // this throws and the caller shows the "no viewer" message.
+      await FileOpener.open({
+        filePath: saved.uri,
+        contentType: 'application/pdf',
       });
       return true;
     }

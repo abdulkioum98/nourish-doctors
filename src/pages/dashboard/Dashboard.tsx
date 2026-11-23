@@ -44,7 +44,7 @@ const TINTS: Record<
 > = {
   emerald: {
     tile:
-      'bg-emerald-50 border border-emerald-200/70 border-b-[3px] border-b-emerald-200 shadow-[0_10px_24px_-12px_rgba(16,185,129,0.45)]',
+      'bg-emerald-50 border border-emerald-200/70 border-b-[3px] border-b-emerald-200 shadow-[0_4px_10px_-8px_rgba(16,185,129,0.35)]',
     iconBox: 'bg-white border border-emerald-100',
     iconHover: 'group-hover:bg-emerald-100',
     title: 'text-emerald-950',
@@ -54,7 +54,7 @@ const TINTS: Record<
   },
   amber: {
     tile:
-      'bg-amber-50 border border-amber-200/70 border-b-[3px] border-b-amber-200 shadow-[0_10px_24px_-12px_rgba(245,158,11,0.45)]',
+      'bg-amber-50 border border-amber-200/70 border-b-[3px] border-b-amber-200 shadow-[0_4px_10px_-8px_rgba(245,158,11,0.35)]',
     iconBox: 'bg-white border border-amber-100',
     iconHover: 'group-hover:bg-amber-100',
     title: 'text-amber-950',
@@ -64,7 +64,7 @@ const TINTS: Record<
   },
   cyan: {
     tile:
-      'bg-cyan-50 border border-cyan-200/70 border-b-[3px] border-b-cyan-200 shadow-[0_10px_24px_-12px_rgba(6,182,212,0.45)]',
+      'bg-cyan-50 border border-cyan-200/70 border-b-[3px] border-b-cyan-200 shadow-[0_4px_10px_-8px_rgba(6,182,212,0.35)]',
     iconBox: 'bg-white border border-cyan-100',
     iconHover: 'group-hover:bg-cyan-100',
     title: 'text-cyan-950',
@@ -144,7 +144,11 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
         <div className={`p-2 rounded-2xl shadow-sm transition-colors ${tint.iconBox} ${tint.iconHover}`}>
           {item.icon}
         </div>
-        <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title}`}>
+        {/* Left cards bleed in from the left, so their text sits at the card's
+            far right end; right cards keep their text on the left. */}
+        <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title} ${
+          align === 'left' ? 'self-end text-right' : ''
+        }`}>
           {item.title}
         </span>
       </button>
@@ -178,7 +182,11 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
           <div className={`p-2 rounded-2xl shadow-sm transition-colors shrink-0 ${tint.iconBox} ${tint.iconHover}`}>
             {icon}
           </div>
-          <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title}`}>
+          {/* Left accordions bleed in from the left, so their text sits at the
+              card's far right end, like the other left cards. */}
+          <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title} ${
+            align === 'left' ? 'self-end text-right' : ''
+          }`}>
             {title}
           </span>
           <ChevronDown

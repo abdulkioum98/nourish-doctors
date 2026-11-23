@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { loadCachedFirst } from '../../lib/offline';
-import { Loader2, AlertCircle, Edit3, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, Edit3, CheckCircle2, Wand2 } from 'lucide-react';
+import RationSuggestModal from '../../components/RationSuggestModal';
+import type { SuggestFeedItem } from '../../lib/rationSuggest';
 import { FatteningCowData } from './FatteningInfoPage';
 
 interface PriceListItem {
@@ -32,6 +34,7 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
   const [priceList, setPriceList] = useState<PriceListItem[]>([]);
   const [nutrientList, setNutrientList] = useState<FeedNutrientItem[]>([]);
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
+  const [showSuggestModal, setShowSuggestModal] = useState<boolean>(false);
 
   useEffect(() => {
     fetchCalculatorData();
@@ -246,6 +249,27 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
   const priceConcentrates = priceList.filter((item) => item.feed_type?.toLowerCase() === 'concentrate');
   const priceFodders = priceList.filter((item) => item.feed_type?.toLowerCase() === 'fodder');
 
+  // Items for the suggestion popup: price (from priceList) joined with
+  // nutrients (from nutrientList) by name — the same name match this page
+  // already uses to link a quantity to its nutrients.
+  const suggestItems: SuggestFeedItem[] = priceList
+    .map((p) => {
+      const n = nutrientList.find(
+        (x) => x.name.trim().toLowerCase() === p.name.trim().toLowerCase(),
+      );
+      if (!n) return null;
+      return {
+        id: p.id,
+        name: p.name,
+        feedType: (p.feed_type || 'concentrate').toLowerCase() === 'fodder' ? 'fodder' : 'concentrate',
+        dmPercent: n.dm_percent || 0,
+        cpPercent: n.cp_percent || 0,
+        meEnergy: n.me_energy || 0,
+        pricePerKg: p.price_per_kg || 0,
+      } as SuggestFeedItem;
+    })
+    .filter((x): x is SuggestFeedItem => x !== null);
+
   return (
     <div className="w-full space-y-4 sm:space-y-6">
       
@@ -454,6 +478,17 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
                 )}
               </div>
             )}
+          </div>
+
+          {/* Suggest ration — opens the popup below the input table */}
+          <div className="p-2 sm:p-2.5">
+            <button
+              onClick={() => setShowSuggestModal(true)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <Wand2 size={16} />
+              <span>Suggest Ration</span>
+            </button>
           </div>
         </div>
 
@@ -774,6 +809,27 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
         </div>
 
       </div>
+
+      {/* SUGGEST RATION POPUP */}
+      <RationSuggestModal
+        open={showSuggestModal}
+        onClose={() => setShowSuggestModal(false)}
+        title="Suggest Ration"
+        subtitle="Pick the ingredients you have available. The suggestion gets as close as possible to this animal's target ratio and DM, CP and Energy requirements."
+        targets={{
+          dmReq,
+          cpReq,
+          energyReq,
+          targetConcentratePct,
+          targetFodderPct,
+        }}
+        items={suggestItems}
+        initialSelectedIds={priceList.filter((item) => (quantities[item.id] || 0) > 0).map((item) => item.id)}
+        onApply={(q) => {
+          setQuantities(q);
+          setShowSuggestModal(false);
+        }}
+      />
     </div>
   );
 }

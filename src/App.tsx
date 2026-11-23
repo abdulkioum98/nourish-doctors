@@ -62,6 +62,8 @@ import {
   processOutbox,
   sendOrQueueUserLog,
   isOnline,
+  saveOfflineUser,
+  getOfflineUser,
 } from './lib/offline';
 
 export type CattleData = CowData | FatteningCowData;
@@ -169,12 +171,25 @@ export default function App() {
     );
     Promise.race([supabase.auth.getSession(), sessionTimeout])
       .then(({ data: { session } }) => {
-        setSession(session);
+        // Offline + no Supabase session (expired token cannot refresh without
+        // internet): reopen with the last logged-in user instead of asking
+        // for login again. The real session returns on the 'online' event.
+        let effectiveSession: any = session;
+        if (!session && !isOnline()) {
+          const stored = getOfflineUser();
+          if (stored) {
+            effectiveSession = { user: { id: stored.id, email: stored.email } };
+          }
+        }
+        if (session?.user?.email) {
+          saveOfflineUser({ id: session.user.id, email: session.user.email });
+        }
+        setSession(effectiveSession);
         setCheckingAuth(false);
 
         // ইউজার সাইটে প্রবেশ করলেই বা রিফ্রেশ দিলেই ডাটাবেজে Online হয়ে যাবে
-        if (session?.user?.email) {
-          updateUserOnlineStatus(session.user.email);
+        if (effectiveSession?.user?.email) {
+          updateUserOnlineStatus(effectiveSession.user.email);
           if (isOnline()) {
             void syncAllReferenceData();
             void processOutbox();
@@ -184,10 +199,20 @@ export default function App() {
       .catch(() => setCheckingAuth(false));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setCheckingAuth(false);
+      let effectiveSession: any = session;
+      if (!session && !isOnline()) {
+        const stored = getOfflineUser();
+        if (stored) {
+          effectiveSession = { user: { id: stored.id, email: stored.email } };
+        }
+      }
       if (session?.user?.email) {
-        updateUserOnlineStatus(session.user.email);
+        saveOfflineUser({ id: session.user.id, email: session.user.email });
+      }
+      setSession(effectiveSession);
+      setCheckingAuth(false);
+      if (effectiveSession?.user?.email) {
+        updateUserOnlineStatus(effectiveSession.user.email);
         if (isOnline()) {
           void syncAllReferenceData();
           void processOutbox();
@@ -195,7 +220,22 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Back online: the real session replaces the offline stand-in, so the
+    // app keeps working with a fresh token after an offline reopen.
+    const handleOnline = () => {
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.email) {
+          saveOfflineUser({ id: session.user.id, email: session.user.email });
+          setSession(session);
+        }
+      });
+    };
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   // Restore scroll position when returning to home/dashboard

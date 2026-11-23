@@ -12,6 +12,54 @@ import { supabase } from '../supabaseClient';
 export const isOnline = (): boolean =>
   typeof navigator === 'undefined' ? true : navigator.onLine;
 
+// ---------------------------------------------------------------------------
+// Last logged-in user (localStorage, not Dexie — it must be readable before
+// any DB work, and it holds no secret, only id + email).
+// Why: a Supabase access token lasts 1 hour. When it expires and the phone
+// is offline, the client cannot refresh it and reports no session — so the
+// app used to ask for login again offline, while online it stayed logged
+// in. Remembering the last user lets the app reopen offline with that
+// identity; the real session is restored as soon as the phone is online.
+// Cleared on logout (queueLogout), so logging out always sticks.
+// ---------------------------------------------------------------------------
+const OFFLINE_USER_KEY = 'nourish-offline-user';
+
+export interface OfflineUser {
+  id: string;
+  email: string;
+}
+
+export function saveOfflineUser(user: { id: string; email: string }): void {
+  try {
+    localStorage.setItem(
+      OFFLINE_USER_KEY,
+      JSON.stringify({ id: user.id, email: user.email }),
+    );
+  } catch {
+    // Remembering the user must never break login.
+  }
+}
+
+export function getOfflineUser(): OfflineUser | null {
+  try {
+    const raw = localStorage.getItem(OFFLINE_USER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<OfflineUser>;
+    if (!parsed || !parsed.email) return null;
+    return { id: String(parsed.id || ''), email: String(parsed.email) };
+  } catch {
+    return null;
+  }
+}
+
+export function clearOfflineUser(): void {
+  try {
+    localStorage.removeItem(OFFLINE_USER_KEY);
+  } catch {
+    // Never block logout.
+  }
+}
+
 interface QueryCacheRow {
   key: string;
   data: unknown;
@@ -274,6 +322,9 @@ export async function sendOrQueueUserLog(
 }
 
 export async function queueLogout(email: string): Promise<void> {
+  // A logout must stick: forget the remembered user so an offline reopen
+  // never brings them back.
+  clearOfflineUser();
   try {
     await offlineDb.outbox.add({
       kind: 'user_log_logout',

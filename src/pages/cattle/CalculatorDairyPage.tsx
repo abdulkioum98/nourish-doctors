@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { downloadTextAsPdf } from '../../lib/downloadPdf';
 import { supabase } from '../../supabaseClient';
 import { loadCachedFirst } from '../../lib/offline';
-import { Loader2, AlertCircle, Edit3, CheckCircle2, Download, Copy, X, Check } from 'lucide-react';
+import { Loader2, AlertCircle, Edit3, CheckCircle2, Download, Copy, X, Check, Wand2 } from 'lucide-react';
+import RationSuggestModal from '../../components/RationSuggestModal';
+import type { SuggestFeedItem } from '../../lib/rationSuggest';
 import { CowData } from './CattleInfoPage';
 
 interface FeedItem {
@@ -29,6 +31,7 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
   const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
+  const [showSuggestModal, setShowSuggestModal] = useState<boolean>(false);
 
   useEffect(() => {
     fetchCalculatorData();
@@ -217,14 +220,9 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
   const selectedConcentrates = concentrates.filter(item => (quantities[item.id] || 0) > 0);
   const selectedFodders = fodders.filter(item => (quantities[item.id] || 0) > 0);
 
-  // Generate Text Content for Copy & PDF Preview
-  const generateFormattedText = () => {
-    let text = `=======================================\n`;
-    text += `       NOURISH POULTRY & HATCHERY LTD.\n`;
-    text += `             Ration Formulation\n`;
-    text += `=======================================\n\n`;
-
-    text += `--- DAIRY INFORMATION ---\n`;
+  // Shared cattle-info block, used by both texts below.
+  const dairyInfoText = () => {
+    let text = `--- DAIRY INFORMATION ---\n`;
     text += `• Cow Type: ${cowType.toUpperCase()}\n`;
     text += `• Stage: ${stageName}\n`;
     text += `• Body Weight: ${bodyWeight} kg\n`;
@@ -236,21 +234,25 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
       text += `• Lactation Age: ${ageLactationMonths} months\n`;
     }
     if (nourishFeedName) text += `• Selected Feed: ${nourishFeedName}\n`;
+    return text;
+  };
 
-    text += `\n--- NUTRIENT REQUIREMENTS`;
-    text += `• DM Required: ${dmReq.toFixed(3)} kg `;
-    text += `• CP Required: ${cpReq.toFixed(3)} kg `;
-    text += `• Energy Required: ${energyReq.toFixed(1)} MJ`;
-    text += `• Total Daily Cost: ৳${totalCost.toFixed(0)}\n`;
+  // Short text for "Copy as Text": cattle info first, then which ingredient
+  // how much — nothing else.
+  const generateShortText = () => {
+    let text = `=======================================\n`;
+    text += `       NOURISH POULTRY & HATCHERY LTD.\n`;
+    text += `             Ration Formulation\n`;
+    text += `=======================================\n\n`;
 
-    text += `\n--- FEED RATION BREAKDOWN ---\n`;
-    
+    text += dairyInfoText();
+
+    text += `\n--- FEED RATION ---\n`;
+
     text += `\n[ CONCENTRATE ]\n`;
     if (selectedConcentrates.length > 0) {
-      selectedConcentrates.forEach(item => {
-        const qty = quantities[item.id];
-        const cost = qty * item.price_per_kg;
-        text += `• ${item.name}: ${qty} kg (@ ৳${item.price_per_kg}/kg = ৳${cost.toFixed(0)})\n`;
+      selectedConcentrates.forEach((item) => {
+        text += `• ${item.name}: ${quantities[item.id]} kg\n`;
       });
     } else {
       text += `  No concentrate items selected.\n`;
@@ -258,10 +260,8 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
 
     text += `\n[ FODDER ]\n`;
     if (selectedFodders.length > 0) {
-      selectedFodders.forEach(item => {
-        const qty = quantities[item.id];
-        const cost = qty * item.price_per_kg;
-        text += `• ${item.name}: ${qty} kg (@ ৳${item.price_per_kg}/kg = ৳${cost.toFixed(0)})\n`;
+      selectedFodders.forEach((item) => {
+        text += `• ${item.name}: ${quantities[item.id]} kg\n`;
       });
     } else {
       text += `  No fodder items selected.\n`;
@@ -271,8 +271,54 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
     return text;
   };
 
+  // Full text for the PDF: the same info + ingredients, plus the whole
+  // calculation — nutrient summary (Required vs Actual + Difference),
+  // target vs actual ratio, and each feed's DM / CP / Energy contribution.
+  const generateFormattedText = () => {
+    let text = `=======================================\n`;
+    text += `       NOURISH POULTRY & HATCHERY LTD.\n`;
+    text += `             Ration Formulation\n`;
+    text += `=======================================\n\n`;
+
+    text += dairyInfoText();
+
+    text += `\n--- NUTRIENT SUMMARY ---\n`;
+    text += `• DM Required: ${dmReq.toFixed(3)} kg | Actual: ${totalActualDM.toFixed(3)} kg | Difference: ${dmDiff.toFixed(3)} kg\n`;
+    text += `• CP Required: ${cpReq.toFixed(3)} kg | Actual: ${totalActualCP.toFixed(3)} kg | Difference: ${cpDiff.toFixed(3)} kg\n`;
+    text += `• Energy Required: ${energyReq.toFixed(1)} MJ | Actual: ${totalActualEnergy.toFixed(1)} MJ | Difference: ${energyDiff.toFixed(1)} MJ\n`;
+    text += `• Target Ratio (Conc : Fodder): ${targetConcentratePct} : ${targetFodderPct} | Actual: ${actualConcentrateRatioPct} : ${actualFodderRatioPct}\n`;
+
+    text += `\n--- FEED RATION BREAKDOWN ---\n`;
+
+    text += `\n[ CONCENTRATE ]\n`;
+    if (selectedConcentrates.length > 0) {
+      selectedConcentrates.forEach((item) => {
+        const qty = quantities[item.id];
+        const cost = qty * item.price_per_kg;
+        text += `• ${item.name}: ${qty} kg | DM ${getItemDMKg(item).toFixed(2)} kg | CP ${getItemCPKg(item).toFixed(2)} kg | Energy ${getItemEnergyMJ(item).toFixed(1)} MJ | Cost ৳${cost.toFixed(0)}\n`;
+      });
+    } else {
+      text += `  No concentrate items selected.\n`;
+    }
+
+    text += `\n[ FODDER ]\n`;
+    if (selectedFodders.length > 0) {
+      selectedFodders.forEach((item) => {
+        const qty = quantities[item.id];
+        const cost = qty * item.price_per_kg;
+        text += `• ${item.name}: ${qty} kg | DM ${getItemDMKg(item).toFixed(2)} kg | CP ${getItemCPKg(item).toFixed(2)} kg | Energy ${getItemEnergyMJ(item).toFixed(1)} MJ | Cost ৳${cost.toFixed(0)}\n`;
+      });
+    } else {
+      text += `  No fodder items selected.\n`;
+    }
+
+    text += `\n• Total Daily Cost: ৳${totalCost.toFixed(0)}\n`;
+    text += `\n=======================================\n`;
+    return text;
+  };
+
   const handleCopyText = () => {
-    const text = generateFormattedText();
+    const text = generateShortText();
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -286,7 +332,7 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
       generateFormattedText(),
     );
     setDownloadingPdf(false);
-    if (!ok) alert('Could not create the PDF. Please try again.');
+    if (!ok) alert('Could not create or open the PDF. If this phone has no PDF viewer app, please install one and try again.');
   };
 
   if (loading) {
@@ -538,6 +584,17 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
                 )}
               </div>
             )}
+          </div>
+
+          {/* Suggest ration — opens the popup below the input table */}
+          <div className="p-2 sm:p-2.5">
+            <button
+              onClick={() => setShowSuggestModal(true)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <Wand2 size={16} />
+              <span>Suggest Ration</span>
+            </button>
           </div>
         </div>
 
@@ -1022,6 +1079,35 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
         </div>
       </div>
 
+      {/* SUGGEST RATION POPUP */}
+      <RationSuggestModal
+        open={showSuggestModal}
+        onClose={() => setShowSuggestModal(false)}
+        title="Suggest Ration"
+        subtitle="Pick the ingredients you have available. The suggestion gets as close as possible to this animal's target ratio and DM, CP and Energy requirements."
+        targets={{
+          dmReq,
+          cpReq,
+          energyReq,
+          targetConcentratePct,
+          targetFodderPct,
+        }}
+        items={itemList.map((item) => ({
+          id: item.id,
+          name: item.name,
+          feedType: item.feed_type === 'fodder' ? 'fodder' : 'concentrate',
+          dmPercent: item.dm_percent,
+          cpPercent: item.cp_percent,
+          meEnergy: item.me_energy,
+          pricePerKg: item.price_per_kg,
+        }))}
+        initialSelectedIds={itemList.filter((item) => (quantities[item.id] || 0) > 0).map((item) => item.id)}
+        onApply={(q) => {
+          setQuantities(q);
+          setShowSuggestModal(false);
+        }}
+      />
+
       {/* POPUP MODAL FOR COPY AS TEXT */}
       {showCopyModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -1044,7 +1130,7 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
             {/* Modal Body */}
             <div className="p-4 overflow-y-auto flex-1 bg-slate-50">
               <pre className="font-mono text-xs sm:text-sm text-slate-800 bg-white p-3.5 rounded-lg border border-slate-200 whitespace-pre-wrap leading-relaxed shadow-inner">
-                {generateFormattedText()}
+                {generateShortText()}
               </pre>
             </div>
 
