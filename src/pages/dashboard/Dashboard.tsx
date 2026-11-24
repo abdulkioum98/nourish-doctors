@@ -127,6 +127,16 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
   ];
 
   // One clean 3D card — short again (like the earlier cards) and bleeding
+  // PC: a card is a bit wider than half the screen, so its title fits on
+  // one line — left cards run from the left edge to past the middle,
+  // right cards from the right edge to past the middle. (The sections
+  // stack vertically, so the two sides never overlap on the same row.
+  // On a phone they stay full-width, bleeding in from their side.)
+  const pcCardWidth = (align: 'left' | 'right') =>
+    align === 'left'
+      ? 'sm:w-[calc(60%+36px)]'
+      : 'sm:w-[calc(60%+36px)] sm:ml-0 sm:self-end sm:-mr-10';
+
   // off one side of the screen: left cards start outside the screen on
   // the left and stop just before the right edge; right cards mirror it.
   // The bleed is a negative margin + a wider card, so it reads as coming
@@ -137,7 +147,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
       <button
         key={item.id}
         onClick={() => onSelectPage(item.id, activeDropdowns)}
-        className={`group rounded-3xl p-3 min-h-[88px] w-[calc(100%+36px)] ${
+        className={`group rounded-3xl p-3 min-h-[88px] w-[calc(100%+36px)] ${pcCardWidth(align)} ${
           align === 'left' ? '-ml-10' : 'ml-1'
         } flex flex-col ${align === 'left' ? 'items-end' : 'items-start'} justify-between gap-2 text-left cursor-pointer transition-all duration-200 hover:-translate-y-1 active:translate-y-0.5 active:border-b-2 ${tint.tile}`}
       >
@@ -145,8 +155,9 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
           {item.icon}
         </div>
         {/* Left cards bleed in from the left, so their text sits at the card's
-            far right end; right cards keep their text on the left. */}
-        <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title} ${
+            far right end; right cards keep their text on the left. The title
+            never wraps — it stays on one line (truncates if ever too long). */}
+        <span className={`font-bold text-sm sm:text-[15px] leading-snug whitespace-nowrap max-w-full overflow-hidden text-ellipsis ${tint.title} ${
           align === 'left' ? 'self-end text-right' : ''
         }`}>
           {item.title}
@@ -171,7 +182,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     return (
       <div
         key={key}
-        className={`relative rounded-3xl transition-all duration-300 overflow-hidden w-[calc(100%+36px)] ${
+        className={`relative rounded-3xl transition-all duration-300 overflow-hidden w-[calc(100%+36px)] ${pcCardWidth(align)} ${
           align === 'left' ? '-ml-10' : 'ml-1'
         } ${tint.tile} hover:-translate-y-1 active:translate-y-0.5 active:border-b-2`}
       >
@@ -184,7 +195,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
           </div>
           {/* Left accordions bleed in from the left, so their text sits at the
               card's far right end, like the other left cards. */}
-          <span className={`font-bold text-sm sm:text-[15px] leading-snug ${tint.title} ${
+          <span className={`font-bold text-sm sm:text-[15px] leading-snug whitespace-nowrap max-w-full overflow-hidden text-ellipsis ${tint.title} ${
             align === 'left' ? 'self-end text-right' : ''
           }`}>
             {title}
@@ -205,7 +216,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
                 onClick={() => onSelectPage(sub.id, activeDropdowns)}
                 className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-semibold text-slate-700 bg-white border border-slate-200/70 flex items-center justify-between gap-1.5 text-left leading-tight transition-all cursor-pointer shadow-sm ${tint.subHover}`}
               >
-                <span>{sub.title}</span>
+                <span className="truncate min-w-0">{sub.title}</span>
                 <ChevronRight size={13} className={`shrink-0 ${tint.subIcon}`} />
               </button>
             ))}
@@ -225,7 +236,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
 
   return (
     <div className="min-h-screen py-8 px-5 flex flex-col items-center font-sans">
-      <div className="w-full max-w-2xl space-y-10">
+      <div className="w-full space-y-10">
         {/* ১. CATTLE SECTION — cards come in from outside the screen on the left */}
         <section className="space-y-4">
           {sectionHeading('bg-emerald-600', 'Cattle Tools', 'text-emerald-900')}

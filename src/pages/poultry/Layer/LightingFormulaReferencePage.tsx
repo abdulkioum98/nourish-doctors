@@ -7,7 +7,7 @@ interface FormulaReferencePageProps {
 
 export default function FormulaReferencePage({ onBack }: FormulaReferencePageProps) {
   return (
-    <div className="space-y-8 max-w-4xl mx-auto pb-12 font-sans text-slate-800">
+    <div className="space-y-8 pb-12 font-sans text-slate-800">
       
       {/* 1. Header Banner */}
       <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-800 flex items-center justify-between">

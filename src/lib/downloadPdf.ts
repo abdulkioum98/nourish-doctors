@@ -136,9 +136,11 @@ export async function downloadTextAsPdf(
           directory: Directory.Cache,
         });
       }
-      // Save is done; open the PDF in a viewer app (shows the "Open with"
-      // chooser with the phone's PDF apps). If no PDF viewer is installed
-      // this throws and the caller shows the "no viewer" message.
+      // Save is done; confirm it visibly, then open the PDF in a viewer
+      // app (shows the "Open with" chooser with the phone's PDF apps).
+      // If no PDF viewer is installed this throws and the caller shows
+      // the "no viewer" message.
+      alert(`PDF saved successfully to Documents: ${fileName}`);
       await FileOpener.open({
         filePath: saved.uri,
         contentType: 'application/pdf',
@@ -146,6 +148,7 @@ export async function downloadTextAsPdf(
       return true;
     }
     doc.save(fileName);
+    alert(`PDF downloaded successfully: ${fileName}`);
     return true;
   } catch (e) {
     console.error('PDF download failed', e);

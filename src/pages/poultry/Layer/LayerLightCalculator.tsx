@@ -79,7 +79,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-3 sm:space-y-6 p-3 sm:p-6 bg-slate-50 min-h-screen">
+    <div className="w-full space-y-3 sm:space-y-6 p-3 sm:p-6 bg-slate-50 min-h-screen">
       {/* CSS PRINT STYLES */}
       <style>{`
         @media print {

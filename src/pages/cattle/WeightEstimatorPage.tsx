@@ -33,7 +33,7 @@ export default function WeightEstimatorPage({ onBack }: WeightEstimatorPageProps
   };
 
   return (
-    <div className="space-y-5 max-w-2xl mx-auto">
+    <div className="space-y-5">
       {/* Header Banner */}
       
 

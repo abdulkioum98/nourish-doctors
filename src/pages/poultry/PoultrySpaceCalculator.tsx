@@ -29,7 +29,7 @@ export default function PoultrySpaceCalculator() {
   const layerCageSummer = totalArea > 0 ? Math.floor(totalArea / 0.6) : 0;
 
   return (
-    <div className="max-w-5xl mx-auto p-3 sm:p-6 space-y-3 sm:space-y-6 font-sans">
+    <div className=" p-3 sm:p-6 space-y-3 sm:space-y-6 font-sans">
       {/* Header */}
       <div className="bg-gradient-to-r from-amber-700 via-amber-800 to-amber-950 rounded-3xl p-2 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>

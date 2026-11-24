@@ -3,12 +3,151 @@ import { supabase } from '../../supabaseClient';
 import { loadCachedFirst, isOnline } from '../../lib/offline';
 import { 
   Lock, LogOut, Plus, Edit3, Trash2, Save, X, Loader2, 
-  Wheat, FlaskConical, BookOpen, RefreshCw, ArrowLeft, Dna 
+  Wheat, FlaskConical, BookOpen, RefreshCw, ArrowLeft, Dna, Table2, KeyRound
 } from 'lucide-react';
 
 interface AdminPageProps {
   onBack?: () => void;
 }
+
+// ---------------------------------------------------------------------------
+// Generic table editor: the standards, vaccination and commercial-feed
+// tables all have the same shape (a list + an add/edit form + delete),
+// so they share one editor driven by this config instead of six copies
+// of the same form/table code. The four original tabs (Nourish Feeds,
+// Other Ingredients, DM Ratio, Breeds) keep their hand-written forms.
+// Column names come from the pages that read these tables, so the form
+// fields match exactly what the calculators and standard pages display.
+// Sonali has no own standard/feed table (both are "Coming soon..." stubs)
+// and Sonali Vaccination reads broiler_vaccinations, so editing the
+// broiler tables covers Sonali too.
+// ---------------------------------------------------------------------------
+type GenericFieldType = 'text' | 'number' | 'select';
+
+interface GenericField {
+  key: string;
+  label: string;
+  type: GenericFieldType;
+  required?: boolean;
+  step?: string;
+  options?: string[];
+  // 'layerBreeds' fills a datalist with the breeds already in the table,
+  // so a typo cannot silently create a breed nobody can select.
+  datalist?: 'layerBreeds';
+}
+
+interface GenericTableDef {
+  key: string;
+  label: string;
+  table: string;
+  cacheKey: string;
+  orderBy: { column: string; ascending: boolean };
+  fields: GenericField[];
+}
+
+const GENERIC_TABLES: GenericTableDef[] = [
+  {
+    key: 'broiler_std',
+    label: 'Broiler Std.',
+    table: 'broiler_standards',
+    cacheKey: 'broiler_standards:all',
+    orderBy: { column: 'day', ascending: true },
+    fields: [
+      { key: 'day', label: 'Day', type: 'number', required: true, step: '1' },
+      { key: 'body_weight', label: 'Body Weight (g)', type: 'number' },
+      { key: 'feed_intake', label: 'Feed Intake (g)', type: 'number' },
+      { key: 'fcr', label: 'FCR', type: 'number', step: '0.001' },
+    ],
+  },
+  {
+    key: 'layer_std',
+    label: 'Layer Std.',
+    table: 'layer_standards',
+    cacheKey: 'layer_standards:all',
+    orderBy: { column: 'age_weeks', ascending: true },
+    fields: [
+      { key: 'age_weeks', label: 'Age (weeks)', type: 'number', required: true, step: '1' },
+      { key: 'breed', label: 'Breed', type: 'text', required: true, datalist: 'layerBreeds' },
+      { key: 'daily_feed_intake', label: 'Daily Feed (g)', type: 'number' },
+      { key: 'cumulative_feed', label: 'Cumulative Feed (g)', type: 'number' },
+      { key: 'body_weight_min', label: 'Body Weight Min (g)', type: 'number' },
+      { key: 'body_weight_max', label: 'Body Weight Max (g)', type: 'number' },
+      { key: 'egg_production_pct', label: 'Egg Production (%)', type: 'number' },
+      { key: 'egg_weight', label: 'Egg Weight (g)', type: 'number' },
+    ],
+  },
+  {
+    key: 'broiler_vacc',
+    label: 'Broiler Vacc.',
+    table: 'broiler_vaccinations',
+    cacheKey: 'broiler_vaccinations:all',
+    orderBy: { column: 'id', ascending: true },
+    fields: [
+      { key: 'age', label: 'Age', type: 'text', required: true },
+      { key: 'vaccine_name', label: 'Vaccine Name', type: 'text', required: true },
+      { key: 'strain', label: 'Strain', type: 'text' },
+      { key: 'route', label: 'Route', type: 'text' },
+    ],
+  },
+  {
+    key: 'layer_vacc',
+    label: 'Layer Vacc.',
+    table: 'layer_vaccinations',
+    cacheKey: 'layer_vaccinations:all',
+    orderBy: { column: 'id', ascending: true },
+    fields: [
+      { key: 'age', label: 'Age', type: 'text', required: true },
+      { key: 'disease_name', label: 'Disease Name', type: 'text', required: true },
+      { key: 'vaccine_name', label: 'Vaccine Name', type: 'text' },
+      { key: 'vaccine_type', label: 'Vaccine Type', type: 'select', options: ['', 'Live', 'Killed'] },
+      { key: 'route', label: 'Route', type: 'text' },
+    ],
+  },
+  {
+    key: 'broiler_feeds',
+    label: 'Broiler Feeds',
+    table: 'broiler_feeds',
+    cacheKey: 'broiler_feeds:all',
+    orderBy: { column: 'id', ascending: true },
+    fields: [
+      { key: 'feed_name', label: 'Feed Name', type: 'text', required: true },
+      { key: 'moisture_max_pct', label: 'Moisture Max (%)', type: 'number' },
+      { key: 'protein_min_pct', label: 'Protein Min (%)', type: 'number' },
+      { key: 'fiber_max_pct', label: 'Fiber Max (%)', type: 'number' },
+      { key: 'calcium_min_pct', label: 'Calcium Min (%)', type: 'number' },
+      { key: 'phosphorus_min_pct', label: 'Phosphorus Min (%)', type: 'number' },
+      { key: 'methionine_min_pct', label: 'Methionine Min (%)', type: 'number' },
+      { key: 'lysine_min_pct', label: 'Lysine Min (%)', type: 'number' },
+      { key: 'metabolisable_energy_kcal_kg', label: 'Energy (kcal/kg)', type: 'number' },
+      { key: 'feed_form', label: 'Feed Form', type: 'text' },
+      { key: 'bird_age_or_stage', label: 'Bird Age / Stage', type: 'text' },
+      { key: 'price', label: 'Price (TK)', type: 'number' },
+    ],
+  },
+  {
+    key: 'layer_feeds',
+    label: 'Layer Feeds',
+    table: 'layer_feeds',
+    cacheKey: 'layer_feeds:all',
+    orderBy: { column: 'id', ascending: true },
+    fields: [
+      { key: 'feed_name', label: 'Feed Name', type: 'text', required: true },
+      { key: 'moisture_max_pct', label: 'Moisture Max (%)', type: 'number' },
+      { key: 'protein_min_pct', label: 'Protein Min (%)', type: 'number' },
+      { key: 'fiber_max_pct', label: 'Fiber Max (%)', type: 'number' },
+      { key: 'calcium_min_pct', label: 'Calcium Min (%)', type: 'number' },
+      { key: 'avail_phosphorus_min_pct', label: 'Avail. Phosphorus Min (%)', type: 'number' },
+      { key: 'methionine_min_pct', label: 'Methionine Min (%)', type: 'number' },
+      { key: 'lysine_min_pct', label: 'Lysine Min (%)', type: 'number' },
+      { key: 'metabolisable_energy_kcal_kg', label: 'Energy (kcal/kg)', type: 'number' },
+      { key: 'feed_form', label: 'Feed Form', type: 'text' },
+      { key: 'bird_age_or_stage', label: 'Bird Age / Stage', type: 'text' },
+      { key: 'price', label: 'Price (TK)', type: 'number' },
+    ],
+  },
+];
+
+const GENERIC_TAB_KEYS = new Set(GENERIC_TABLES.map((t) => t.key));
 
 export default function AdminPage({ onBack }: AdminPageProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -17,8 +156,8 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [loginError, setLoginError] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
 
-  // Active Tab State (Added 'breeds' tab)
-  const [activeTab, setActiveTab] = useState<'nourish' | 'other' | 'dm' | 'breeds'>('nourish');
+  // Active Tab State — the four original tabs plus the six generic ones
+  const [activeTab, setActiveTab] = useState<string>('nourish');
 
   // Form Visibility State
   const [showForm, setShowForm] = useState(false);
@@ -55,10 +194,27 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [breedName, setBreedName] = useState('');
   const [breedCategory, setBreedCategory] = useState<'dairy' | 'fattening'>('dairy');
 
+  // Generic table editor state (standards, vaccinations, commercial feeds)
+  const [genericRows, setGenericRows] = useState<Record<string, any[]>>({});
+  const [genericForm, setGenericForm] = useState<Record<string, string>>({});
+  const [genericEditId, setGenericEditId] = useState<string | number | null>(null);
+  const [genericShowForm, setGenericShowForm] = useState(false);
+
+  // Change Password state — the username is remembered at login so the
+  // password can be changed from inside the panel, no SQL needed.
+  const [adminUsername, setAdminUsername] = useState('');
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
   useEffect(() => {
     const adminStatus = localStorage.getItem('is_admin_logged_in');
     if (adminStatus === 'true') {
       setIsLoggedIn(true);
+      setAdminUsername(localStorage.getItem('admin_username') || '');
       fetchAllData();
     }
   }, []);
@@ -81,6 +237,8 @@ export default function AdminPage({ onBack }: AdminPageProps) {
         setLoginError('Invalid Username or Password!');
       } else {
         localStorage.setItem('is_admin_logged_in', 'true');
+        localStorage.setItem('admin_username', username.trim());
+        setAdminUsername(username.trim());
         setIsLoggedIn(true);
         fetchAllData();
       }
@@ -93,6 +251,8 @@ export default function AdminPage({ onBack }: AdminPageProps) {
 
   const handleLogout = () => {
     localStorage.removeItem('is_admin_logged_in');
+    localStorage.removeItem('admin_username');
+    setAdminUsername('');
     setIsLoggedIn(false);
   };
 
@@ -102,15 +262,17 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     // spinner stops instantly on cache hits; the awaited promises only
     // finish after the background network refresh.
     let doneCount = 0;
+    const totalTables = 4 + GENERIC_TABLES.length;
     const markDone = () => {
       doneCount += 1;
-      if (doneCount === 4) setLoading(false);
+      if (doneCount === totalTables) setLoading(false);
     };
     await Promise.all([
       fetchNourishFeeds(markDone),
       fetchOtherIngredients(markDone),
       fetchDmReferences(markDone),
       fetchBreeds(markDone),
+      ...GENERIC_TABLES.map((def) => fetchGenericTable(def, markDone)),
     ]);
     setLoading(false);
   };
@@ -179,6 +341,120 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     );
   };
 
+  // Generic table fetch / submit, shared by the six new tabs.
+  const fetchGenericTable = async (def: GenericTableDef, onDone?: () => void) => {
+    await loadCachedFirst<any[]>(
+      def.cacheKey,
+      async () => {
+        const { data, error } = await supabase
+          .from(def.table)
+          .select('*')
+          .order(def.orderBy.column, { ascending: def.orderBy.ascending });
+        if (error) {
+          console.error(`Error fetching ${def.table}:`, error);
+          return [];
+        }
+        return data || [];
+      },
+      (rows) => setGenericRows((prev) => ({ ...prev, [def.key]: rows })),
+      onDone,
+    );
+  };
+
+  const resetGenericForm = () => {
+    setGenericEditId(null);
+    setGenericShowForm(false);
+    setGenericForm({});
+  };
+
+  const handleGenericSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isOnline()) {
+      alert('You are offline. Admin changes need internet.');
+      return;
+    }
+    const def = GENERIC_TABLES.find((t) => t.key === activeTab);
+    if (!def) return;
+    setSubmitting(true);
+    const payload: Record<string, unknown> = {};
+    for (const f of def.fields) {
+      const raw = (genericForm[f.key] ?? '').trim();
+      if (f.type === 'number') {
+        const n = parseFloat(raw);
+        payload[f.key] = Number.isNaN(n) ? null : n;
+      } else {
+        payload[f.key] = raw === '' ? null : raw;
+      }
+    }
+    if (genericEditId) {
+      const { error } = await supabase.from(def.table).update(payload).eq('id', genericEditId);
+      if (error) alert(error.message);
+    } else {
+      const { error } = await supabase.from(def.table).insert([payload]);
+      if (error) alert(error.message);
+    }
+    resetGenericForm();
+    fetchGenericTable(def);
+    setSubmitting(false);
+  };
+
+  const startGenericEdit = (def: GenericTableDef, row: any) => {
+    const values: Record<string, string> = {};
+    for (const f of def.fields) {
+      const v = row[f.key];
+      values[f.key] = v === null || v === undefined ? '' : String(v);
+    }
+    setGenericForm(values);
+    setGenericEditId(row.id);
+    setGenericShowForm(true);
+  };
+
+  // Change the logged-in admin's own password (no SQL needed).
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMsg('');
+    if (!adminUsername) {
+      setPasswordMsg('Please log out and log in again, then change the password.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordMsg('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg('New passwords do not match.');
+      return;
+    }
+    if (!isOnline()) {
+      setPasswordMsg('You are offline. Changing the password needs internet.');
+      return;
+    }
+    setChangingPassword(true);
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('id')
+      .eq('username', adminUsername)
+      .eq('password', currentPassword.trim());
+    if (error || !data || data.length === 0) {
+      setPasswordMsg('Current password is incorrect.');
+      setChangingPassword(false);
+      return;
+    }
+    const { error: updateError } = await supabase
+      .from('admin_users')
+      .update({ password: newPassword.trim() })
+      .eq('username', adminUsername);
+    setChangingPassword(false);
+    if (updateError) {
+      setPasswordMsg('Failed to change password: ' + updateError.message);
+      return;
+    }
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordMsg('Password changed successfully.');
+  };
+
   const resetForm = () => {
     setEditId(null);
     setShowForm(false);
@@ -197,9 +473,10 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setBreedCategory('dairy');
   };
 
-  const handleTabChange = (tab: 'nourish' | 'other' | 'dm' | 'breeds') => {
+  const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     resetForm();
+    resetGenericForm();
   };
 
   const handleDelete = async (table: string, id: string | number) => {
@@ -318,6 +595,15 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setSubmitting(false);
   };
 
+  // The generic table definition for the active tab, if it is a generic tab.
+  const activeGenericDef = GENERIC_TABLES.find((t) => t.key === activeTab);
+  // Whether the add/edit form is open for the active tab (either kind).
+  const formOpen = activeGenericDef ? genericShowForm : showForm;
+  // Breeds already in the Layer Standards table, for the breed datalist.
+  const layerBreeds = Array.from(
+    new Set((genericRows['layer_std'] || []).map((r) => r.breed).filter(Boolean)),
+  ) as string[];
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-[75vh] flex items-center justify-center p-4">
@@ -383,7 +669,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   }
 
   return (
-    <div className="bg-slate-50 min-h-[85vh] p-3 sm:p-4 rounded-2xl border border-slate-200 space-y-4 max-w-3xl mx-auto text-xs">
+    <div className="bg-slate-50 min-h-[85vh] p-3 sm:p-4 rounded-2xl border border-slate-200 space-y-4 text-xs">
       {/* Top Header */}
       <div className="flex justify-between items-center bg-white p-3.5 rounded-xl border border-slate-100 shadow-2xs">
         <div>
@@ -408,6 +694,17 @@ export default function AdminPage({ onBack }: AdminPageProps) {
             <RefreshCw size={15} />
           </button>
           <button
+            onClick={() => {
+              setShowPasswordForm((v) => !v);
+              setPasswordMsg('');
+            }}
+            className="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition"
+            title="Change admin password"
+          >
+            <KeyRound size={14} />
+            <span>Password</span>
+          </button>
+          <button
             onClick={handleLogout}
             className="flex items-center space-x-1 bg-rose-50 text-rose-700 hover:bg-rose-100 px-3 py-1.5 rounded-lg font-medium transition"
           >
@@ -417,44 +714,60 @@ export default function AdminPage({ onBack }: AdminPageProps) {
         </div>
       </div>
 
-      {/* Navigation Tabs (4 Grid items) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-200/80 rounded-xl">
-        <button
-          onClick={() => handleTabChange('nourish')}
-          className={`py-2 px-2 rounded-lg font-bold flex items-center justify-center space-x-1 transition ${
-            activeTab === 'nourish' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Wheat size={13} />
-          <span className="truncate">1. Nourish Feeds</span>
-        </button>
-        <button
-          onClick={() => handleTabChange('other')}
-          className={`py-2 px-2 rounded-lg font-bold flex items-center justify-center space-x-1 transition ${
-            activeTab === 'other' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <FlaskConical size={13} />
-          <span className="truncate">2. Other Feed</span>
-        </button>
-        <button
-          onClick={() => handleTabChange('dm')}
-          className={`py-2 px-2 rounded-lg font-bold flex items-center justify-center space-x-1 transition ${
-            activeTab === 'dm' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <BookOpen size={13} />
-          <span className="truncate">3. DM Ratio</span>
-        </button>
-        <button
-          onClick={() => handleTabChange('breeds')}
-          className={`py-2 px-2 rounded-lg font-bold flex items-center justify-center space-x-1 transition ${
-            activeTab === 'breeds' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Dna size={13} />
-          <span className="truncate">4. Breeds</span>
-        </button>
+      {/* Change Password — the logged-in admin's own password, no SQL needed */}
+      {showPasswordForm && (
+        <form onSubmit={handleChangePassword} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
+          <div className="font-bold text-emerald-800">Change Admin Password</div>
+          {passwordMsg && (
+            <div className={`p-2.5 rounded-lg text-center font-medium ${
+              passwordMsg === 'Password changed successfully.'
+                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                : 'bg-rose-50 border border-rose-200 text-rose-700'
+            }`}>
+              {passwordMsg}
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] text-slate-500">Current Password</label>
+              <input type="password" required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500">New Password (min 6 characters)</label>
+              <input type="password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500">Confirm New Password</label>
+              <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+            </div>
+          </div>
+          <button type="submit" disabled={changingPassword} className="w-full bg-emerald-800 text-white py-2 rounded-lg font-bold flex justify-center items-center space-x-1">
+            {changingPassword ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            <span>{changingPassword ? 'Changing...' : 'Change Password'}</span>
+          </button>
+        </form>
+      )}
+
+      {/* Navigation Tabs — one scrollable row for all 10 tables */}
+      <div className="flex gap-1.5 p-1 bg-slate-200/80 rounded-xl overflow-x-auto">
+        {[
+          { key: 'nourish', label: 'Nourish Feeds', icon: <Wheat size={13} /> },
+          { key: 'other', label: 'Other Feed', icon: <FlaskConical size={13} /> },
+          { key: 'dm', label: 'DM Ratio', icon: <BookOpen size={13} /> },
+          { key: 'breeds', label: 'Breeds', icon: <Dna size={13} /> },
+          ...GENERIC_TABLES.map((t) => ({ key: t.key, label: t.label, icon: <Table2 size={13} /> })),
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => handleTabChange(tab.key)}
+            className={`py-2 px-3 rounded-lg font-bold flex items-center justify-center space-x-1 transition shrink-0 whitespace-nowrap ${
+              activeTab === tab.key ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -471,20 +784,24 @@ export default function AdminPage({ onBack }: AdminPageProps) {
               {activeTab === 'other' && 'Other Ingredients Table'}
               {activeTab === 'dm' && 'DM Reference Entries'}
               {activeTab === 'breeds' && 'Cattle Breeds Table'}
+              {activeGenericDef && `${activeGenericDef.label} Table`}
             </span>
             <button
               onClick={() => {
-                if (showForm) resetForm();
+                if (activeGenericDef) {
+                  if (genericShowForm) resetGenericForm();
+                  else setGenericShowForm(true);
+                } else if (showForm) resetForm();
                 else setShowForm(true);
               }}
               className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg font-bold transition shadow-2xs ${
-                showForm 
+                formOpen 
                   ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' 
                   : 'bg-emerald-800 text-white hover:bg-emerald-900'
               }`}
             >
-              {showForm ? <X size={14} /> : <Plus size={14} />}
-              <span>{showForm ? 'Cancel' : 'Add New Item'}</span>
+              {formOpen ? <X size={14} /> : <Plus size={14} />}
+              <span>{formOpen ? 'Cancel' : 'Add New Item'}</span>
             </button>
           </div>
 
@@ -807,6 +1124,98 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                               setShowForm(true); 
                             }} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
                             <button onClick={() => handleDelete('breeds', breed.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* GENERIC TABS: standards, vaccinations, commercial feeds */}
+          {activeGenericDef && (
+            <div className="space-y-4">
+              {genericShowForm && (
+                <form onSubmit={handleGenericSubmit} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
+                  <div className="flex justify-between items-center border-b pb-2 font-bold text-emerald-800">
+                    <span>{genericEditId ? `Edit ${activeGenericDef.label}` : `Add New ${activeGenericDef.label}`}</span>
+                    <button type="button" onClick={resetGenericForm}><X size={14} /></button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {activeGenericDef.fields.map((f) => (
+                      <div key={f.key}>
+                        <label className="text-[10px] text-slate-500">{f.label}</label>
+                        {f.type === 'select' ? (
+                          <select
+                            value={genericForm[f.key] ?? ''}
+                            onChange={(e) => setGenericForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                            className="w-full border p-1.5 rounded-lg bg-white"
+                          >
+                            {f.options?.map((o) => (
+                              <option key={o} value={o}>{o === '' ? '-' : o}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <>
+                            <input
+                              type={f.type === 'number' ? 'number' : 'text'}
+                              step={f.type === 'number' ? (f.step || 'any') : undefined}
+                              required={f.required}
+                              list={f.datalist === 'layerBreeds' ? 'dl-layer-breeds' : undefined}
+                              placeholder={f.label}
+                              value={genericForm[f.key] ?? ''}
+                              onChange={(e) => setGenericForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                              className="w-full border p-1.5 rounded-lg"
+                            />
+                            {f.datalist === 'layerBreeds' && (
+                              <datalist id="dl-layer-breeds">
+                                {layerBreeds.map((b) => (
+                                  <option key={b} value={b} />
+                                ))}
+                              </datalist>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button type="submit" disabled={submitting} className="w-full bg-emerald-800 text-white py-2 rounded-lg font-bold flex justify-center items-center space-x-1">
+                    {submitting ? <Loader2 size={14} className="animate-spin" /> : genericEditId ? <Save size={14} /> : <Plus size={14} />}
+                    <span>{genericEditId ? `Update ${activeGenericDef.label}` : `Save ${activeGenericDef.label}`}</span>
+                  </button>
+                </form>
+              )}
+
+              <div className="bg-white rounded-xl border overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-100 font-bold border-b text-[11px] uppercase text-slate-600">
+                    <tr>
+                      {activeGenericDef.fields.map((f) => (
+                        <th key={f.key} className="p-2.5 whitespace-nowrap">{f.label}</th>
+                      ))}
+                      <th className="p-2.5 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y text-slate-700">
+                    {(genericRows[activeGenericDef.key] || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={activeGenericDef.fields.length + 1} className="p-4 text-center text-slate-400 font-medium">
+                          No entries found.
+                        </td>
+                      </tr>
+                    ) : (
+                      (genericRows[activeGenericDef.key] || []).map((row) => (
+                        <tr key={row.id} className="hover:bg-slate-50">
+                          {activeGenericDef.fields.map((f, i) => (
+                            <td key={f.key} className={`p-2.5 whitespace-nowrap ${i === 0 ? 'font-bold' : 'text-center'}`}>
+                              {row[f.key] === null || row[f.key] === undefined || row[f.key] === '' ? '-' : String(row[f.key])}
+                            </td>
+                          ))}
+                          <td className="p-2.5 text-center space-x-1 whitespace-nowrap">
+                            <button onClick={() => startGenericEdit(activeGenericDef, row)} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
+                            <button onClick={() => handleDelete(activeGenericDef.table, row.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
                           </td>
                         </tr>
                       ))

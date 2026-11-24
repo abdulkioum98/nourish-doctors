@@ -64,7 +64,7 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
   };
 
   return (
-    <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-100 space-y-4 max-w-2xl mx-auto">
+    <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
       {/* Header */}
       <div className="flex justify-between items-center border-b pb-3">
         <div className="flex items-center space-x-2">

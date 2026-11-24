@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { isOnline, queueLogout, refreshDataNow, getLastDataUpdated } from '../lib/offline';
-import { Capacitor } from '@capacitor/core';
+import { isOnline, queueLogout, refreshDataNow, getLastDataUpdated, clearOfflineUser } from '../lib/offline';
 import {
   X,
   LogOut,
@@ -66,11 +65,13 @@ export default function Sidebar({
     }
     setLastUpdated(getLastDataUpdated());
     setUpdateMsg('Data updated.');
-    // Browser only: reload so a new Vercel/hosting deploy is picked up.
-    // The APK bundles its own web files, so a reload changes nothing there.
-    if (!Capacitor.isNativePlatform()) {
-      setTimeout(() => window.location.reload(), 700);
-    }
+    // Reload the app so the fresh data actually shows: the pages hold
+    // their data in memory, so without a reload they keep showing the
+    // old rows even though the cache was just refreshed. In the browser
+    // this also picks up a newly deployed version. In the APK it reloads
+    // the bundled app with the fresh data — the code itself only changes
+    // with a new APK build, data is what updates here.
+    setTimeout(() => window.location.reload(), 700);
   };
 
   const handleLogout = async () => {
@@ -117,6 +118,9 @@ export default function Sidebar({
       }
     }
 
+    // A logout must stick: forget the remembered user, or the next
+    // (offline) reopen would sign them straight back in.
+    clearOfflineUser();
     try {
       await supabase.auth.signOut();
     } catch {
@@ -170,19 +174,22 @@ export default function Sidebar({
               <span>Dashboard</span>
             </button>
 
-            {/* Admin Portal Option */}
-            {activeId === 'admin' && (
-              <button
-                onClick={() => {
-                  onNavigate('admin', 'Admin Portal');
-                  onClose();
-                }}
-                className="w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center space-x-3 bg-emerald-50 text-emerald-800 font-bold shadow-xs border-l-4 border-emerald-600"
-              >
-                <ShieldAlert size={18} className="text-emerald-700" />
-                <span>Admin Portal</span>
-              </button>
-            )}
+            {/* Admin Portal Option — always listed so /admin is reachable
+                from the app; the admin login itself guards the panel */}
+            <button
+              onClick={() => {
+                onNavigate('admin', 'Admin Portal');
+                onClose();
+              }}
+              className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all duration-150 ${
+                activeId === 'admin'
+                  ? 'bg-emerald-50 text-emerald-800 font-bold shadow-xs border-l-4 border-emerald-600'
+                  : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <ShieldAlert size={18} className="text-emerald-700" />
+              <span>Admin Portal</span>
+            </button>
 
             {/* User Info Option - Only visible for abdulkioum98@gmail.com */}
             {userEmail === 'abdulkioum98@gmail.com' && (
