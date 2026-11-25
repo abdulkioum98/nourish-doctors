@@ -1,6 +1,5 @@
 import React from 'react';
 import { supabase } from '../../../supabaseClient';
-import { isOnline, queueLogout } from '../../../lib/offline';
 import {
   X,
   BookOpen,
@@ -8,6 +7,7 @@ import {
   Calculator,
   Layers,
   Dna,
+  HeartPulse,
   LogOut,
   Mail,
   Home
@@ -32,19 +32,13 @@ export default function CattleSidebar({
   const menuItems = [
     { id: 'cattle-info', label: 'Calculator', icon: <Calculator size={18} /> },
     { id: 'nourish-feeds-reference', label: 'Nourish Feeds', icon: <Wheat size={18} /> },
+    { id: 'cattle-health', label: 'Cattle Health', icon: <HeartPulse size={18} /> },
     { id: 'other-ingredients-reference', label: 'Other Ingredients', icon: <Layers size={18} /> },
     { id: 'dm-ratio-reference', label: 'DM Ratio Reference', icon: <BookOpen size={18} /> },
     { id: 'breed-reference', label: 'Breeds Guide', icon: <Dna size={18} /> },
   ];
 
   const handleLogout = async () => {
-      if (!isOnline()) {
-        if (userEmail) await queueLogout(userEmail);
-        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-        window.location.reload();
-        return;
-      }
-
       if (userEmail) {
         await supabase
           .from('user_logs')
@@ -55,11 +49,7 @@ export default function CattleSidebar({
           .eq('user_email', userEmail);
       }
   
-      try {
-        await supabase.auth.signOut();
-      } catch {
-        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-      }
+      await supabase.auth.signOut();
       window.location.reload();
     };
 

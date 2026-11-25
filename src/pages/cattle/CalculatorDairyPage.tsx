@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { downloadTextAsPdf } from '../../lib/downloadPdf';
+import { downloadTablePdf } from '../../lib/downloadPdf';
 import { supabase } from '../../supabaseClient';
 import { loadCachedFirst } from '../../lib/offline';
 import { Loader2, AlertCircle, Edit3, CheckCircle2, Download, Copy, X, Check, Wand2 } from 'lucide-react';
@@ -220,100 +220,29 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
   const selectedConcentrates = concentrates.filter(item => (quantities[item.id] || 0) > 0);
   const selectedFodders = fodders.filter(item => (quantities[item.id] || 0) > 0);
 
-  // Shared cattle-info block, used by both texts below.
-  const dairyInfoText = () => {
-    let text = `--- DAIRY INFORMATION ---\n`;
-    text += `• Cow Type: ${cowType.toUpperCase()}\n`;
-    text += `• Stage: ${stageName}\n`;
-    text += `• Body Weight: ${bodyWeight} kg\n`;
-    if (breedType) text += `• Breed: ${breedType}\n`;
-    if (ageMonths) text += `• Age: ${ageMonths} months\n`;
-    if (cowType === 'lactating') {
-      text += `• Milk Yield: ${milkYield} L\n`;
-      text += `• Lactation No: ${cowData?.lactationNo || '-'}\n`;
-      text += `• Lactation Age: ${ageLactationMonths} months\n`;
-    }
-    if (nourishFeedName) text += `• Selected Feed: ${nourishFeedName}\n`;
-    return text;
-  };
-
-  // Short text for "Copy as Text": cattle info first, then which ingredient
-  // how much — nothing else.
+  // Short text for "Copy as Text": just the gist — one compact animal
+  // line, then which ingredient how much, then the total cost. Nothing else.
   const generateShortText = () => {
-    let text = `=======================================\n`;
-    text += `       NOURISH POULTRY & HATCHERY LTD.\n`;
-    text += `             Ration Formulation\n`;
-    text += `=======================================\n\n`;
+    let text = `NOURISH - Ration Formulation\n`;
+    text += `${stageName} ${cowType === 'lactating' ? 'Cow' : 'Cattle'} - ${bodyWeight} kg`;
+    if (cowType === 'lactating') text += ` - ${milkYield} L/day`;
+    text += `\n\n`;
 
-    text += dairyInfoText();
-
-    text += `\n--- FEED RATION ---\n`;
-
-    text += `\n[ CONCENTRATE ]\n`;
     if (selectedConcentrates.length > 0) {
+      text += `CONCENTRATE\n`;
       selectedConcentrates.forEach((item) => {
         text += `• ${item.name}: ${quantities[item.id]} kg\n`;
       });
-    } else {
-      text += `  No concentrate items selected.\n`;
+      text += `\n`;
     }
-
-    text += `\n[ FODDER ]\n`;
     if (selectedFodders.length > 0) {
+      text += `FODDER\n`;
       selectedFodders.forEach((item) => {
         text += `• ${item.name}: ${quantities[item.id]} kg\n`;
       });
-    } else {
-      text += `  No fodder items selected.\n`;
+      text += `\n`;
     }
-
-    text += `\n=======================================\n`;
-    return text;
-  };
-
-  // Full text for the PDF: the same info + ingredients, plus the whole
-  // calculation — nutrient summary (Required vs Actual + Difference),
-  // target vs actual ratio, and each feed's DM / CP / Energy contribution.
-  const generateFormattedText = () => {
-    let text = `=======================================\n`;
-    text += `       NOURISH POULTRY & HATCHERY LTD.\n`;
-    text += `             Ration Formulation\n`;
-    text += `=======================================\n\n`;
-
-    text += dairyInfoText();
-
-    text += `\n--- NUTRIENT SUMMARY ---\n`;
-    text += `• DM Required: ${dmReq.toFixed(3)} kg | Actual: ${totalActualDM.toFixed(3)} kg | Difference: ${dmDiff.toFixed(3)} kg\n`;
-    text += `• CP Required: ${cpReq.toFixed(3)} kg | Actual: ${totalActualCP.toFixed(3)} kg | Difference: ${cpDiff.toFixed(3)} kg\n`;
-    text += `• Energy Required: ${energyReq.toFixed(1)} MJ | Actual: ${totalActualEnergy.toFixed(1)} MJ | Difference: ${energyDiff.toFixed(1)} MJ\n`;
-    text += `• Target Ratio (Conc : Fodder): ${targetConcentratePct} : ${targetFodderPct} | Actual: ${actualConcentrateRatioPct} : ${actualFodderRatioPct}\n`;
-
-    text += `\n--- FEED RATION BREAKDOWN ---\n`;
-
-    text += `\n[ CONCENTRATE ]\n`;
-    if (selectedConcentrates.length > 0) {
-      selectedConcentrates.forEach((item) => {
-        const qty = quantities[item.id];
-        const cost = qty * item.price_per_kg;
-        text += `• ${item.name}: ${qty} kg | DM ${getItemDMKg(item).toFixed(2)} kg | CP ${getItemCPKg(item).toFixed(2)} kg | Energy ${getItemEnergyMJ(item).toFixed(1)} MJ | Cost ৳${cost.toFixed(0)}\n`;
-      });
-    } else {
-      text += `  No concentrate items selected.\n`;
-    }
-
-    text += `\n[ FODDER ]\n`;
-    if (selectedFodders.length > 0) {
-      selectedFodders.forEach((item) => {
-        const qty = quantities[item.id];
-        const cost = qty * item.price_per_kg;
-        text += `• ${item.name}: ${qty} kg | DM ${getItemDMKg(item).toFixed(2)} kg | CP ${getItemCPKg(item).toFixed(2)} kg | Energy ${getItemEnergyMJ(item).toFixed(1)} MJ | Cost ৳${cost.toFixed(0)}\n`;
-      });
-    } else {
-      text += `  No fodder items selected.\n`;
-    }
-
-    text += `\n• Total Daily Cost: ৳${totalCost.toFixed(0)}\n`;
-    text += `\n=======================================\n`;
+    text += `Total Cost: Tk ${totalCost.toFixed(0)}/day\n`;
     return text;
   };
 
@@ -326,10 +255,71 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
 
   const handleDownloadPDF = async () => {
     setDownloadingPdf(true);
-    const ok = await downloadTextAsPdf(
+    const info: Array<[string, string]> = [
+      ['Cow Type', cowType === 'lactating' ? 'Lactating Cow' : 'Cattle'],
+      ['Stage', stageName],
+      ['Body Weight', `${bodyWeight} kg`],
+    ];
+    if (breedType) info.push(['Breed', breedType]);
+    if (ageMonths) info.push(['Age', `${ageMonths} months`]);
+    if (cowType === 'lactating') {
+      info.push(['Milk Yield', `${milkYield} L`]);
+      info.push(['Lactation No', `${cowData?.lactationNo || '-'}`]);
+      info.push(['Lactation Age', `${ageLactationMonths} months`]);
+    }
+    if (nourishFeedName) info.push(['Selected Feed', nourishFeedName]);
+    info.push([
+      'Ratio (Conc : Fodder)',
+      `Target ${targetConcentratePct} : ${targetFodderPct}  |  Actual ${actualConcentrateRatioPct} : ${actualFodderRatioPct}`,
+    ]);
+
+    const feedRows = (items: typeof selectedConcentrates) =>
+      items.map((item) => {
+        const qty = quantities[item.id];
+        return [
+          item.name,
+          `${qty}`,
+          getItemDMKg(item).toFixed(2),
+          getItemCPKg(item).toFixed(2),
+          getItemEnergyMJ(item).toFixed(1),
+          `${Math.round(qty * item.price_per_kg)}`,
+        ];
+      });
+    const ok = await downloadTablePdf(
       `dairy-ration-${new Date().toISOString().slice(0, 10)}.pdf`,
       'Ration Formulation Report',
-      generateFormattedText(),
+      info,
+      [
+        {
+          title: 'Nutrient Summary',
+          headers: ['Nutrient', 'Required', 'Actual', 'Difference'],
+          rows: [
+            ['DM (kg)', dmReq.toFixed(3), totalActualDM.toFixed(3), dmDiff.toFixed(3)],
+            ['CP (kg)', cpReq.toFixed(3), totalActualCP.toFixed(3), cpDiff.toFixed(3)],
+            ['Energy (MJ)', energyReq.toFixed(1), totalActualEnergy.toFixed(1), energyDiff.toFixed(1)],
+          ],
+        },
+        {
+          title: 'Feed Ration Breakdown',
+          headers: ['Feed', 'Qty (kg)', 'DM (kg)', 'CP (kg)', 'Energy (MJ)', 'Cost (Tk)'],
+          rows: [
+            ...(selectedConcentrates.length > 0
+              ? [['Concentrate', '', '', '', '', ''], ...feedRows(selectedConcentrates)]
+              : []),
+            ...(selectedFodders.length > 0
+              ? [['Fodder', '', '', '', '', ''], ...feedRows(selectedFodders)]
+              : []),
+          ],
+          totalRow: [
+            'Total',
+            '',
+            totalActualDM.toFixed(2),
+            totalActualCP.toFixed(2),
+            totalActualEnergy.toFixed(1),
+            `${Math.round(totalCost)}`,
+          ],
+        },
+      ],
     );
     setDownloadingPdf(false);
     if (!ok) alert('Could not create or open the PDF. If this phone has no PDF viewer app, please install one and try again.');

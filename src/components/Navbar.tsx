@@ -21,6 +21,7 @@ const PAGE_TITLES: Record<string, string> = {
   'fatteningcalculator': 'Fattening Calc.',
   'nourish-feeds': 'Nourish Feeds',
   'nourish-feeds-reference': 'Nourish Feeds',
+  'cattle-health': 'Cattle Health',
   'weight-measure': 'Live Weight',
   'weight-guide': 'Measure Guide',
   'schaeffer-formula': 'Schaeffer Formula',

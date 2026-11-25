@@ -6,7 +6,6 @@ import {
   LogOut,
   Mail,
   Home,
-  ShieldAlert,
   Users,
   RefreshCw,
 } from 'lucide-react';
@@ -174,22 +173,8 @@ export default function Sidebar({
               <span>Dashboard</span>
             </button>
 
-            {/* Admin Portal Option — always listed so /admin is reachable
-                from the app; the admin login itself guards the panel */}
-            <button
-              onClick={() => {
-                onNavigate('admin', 'Admin Portal');
-                onClose();
-              }}
-              className={`w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all duration-150 ${
-                activeId === 'admin'
-                  ? 'bg-emerald-50 text-emerald-800 font-bold shadow-xs border-l-4 border-emerald-600'
-                  : 'text-gray-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <ShieldAlert size={18} className="text-emerald-700" />
-              <span>Admin Portal</span>
-            </button>
+            {/* No Admin Portal link here — the admin panel is reached only
+                by its web link (/admin); the admin login guards it. */}
 
             {/* User Info Option - Only visible for abdulkioum98@gmail.com */}
             {userEmail === 'abdulkioum98@gmail.com' && (

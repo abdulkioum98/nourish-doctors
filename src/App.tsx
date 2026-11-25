@@ -20,6 +20,7 @@ import CalculatorFattening, { FatteningCowData } from './pages/cattle/FatteningI
 import CalculatorPage from './pages/cattle/CalculatorDairyPage';
 import CalculatorFatteningPage from './pages/cattle/CalculatorFatteningPage';
 import NourishFeedPage from './pages/cattle/NourishFeedPage';
+import CattleHealthPage from './pages/cattle/CattleHealthPage';
 import WeightEstimatorPage from './pages/cattle/WeightEstimatorPage';
 import MeasurementGuidePage from './pages/cattle/MeasurementGuidePage';
 import SchaefferFormulaPage from './pages/cattle/SchaefferFormulaPage';
@@ -79,6 +80,7 @@ export type PageType =
   | 'weight-measure'
   | 'nourish-feeds'
   | 'nourish-feeds-reference'
+  | 'cattle-health'
   | 'weight-guide'
   | 'schaeffer-formula'
   
@@ -454,6 +456,7 @@ export default function App() {
       'dm-reference',
       'dm-ratio-reference',
       'breed-reference',
+      'cattle-health',
     ];
 
     if (generalCattlePages.includes(currentPage)) {
@@ -579,6 +582,10 @@ export default function App() {
 
         {(currentPage === 'nourish-feeds' || currentPage === 'nourish-feeds-reference') && (
           <NourishFeedPage onBack={handleGoHome} />
+        )}
+
+        {currentPage === 'cattle-health' && (
+          <CattleHealthPage onBack={handleGoHome} />
         )}
 
         {(currentPage === 'feed-nutrients' || currentPage === 'other-ingredients-reference') && (

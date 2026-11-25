@@ -113,43 +113,241 @@ export async function downloadTextAsPdf(
 ): Promise<boolean> {
   try {
     const doc = buildPdf(text, title);
-    if (Capacitor.isNativePlatform()) {
-      const base64 = doc.output('datauristring').split(',')[1];
-      // Save FIRST to the phone's Documents folder, so the PDF is really
-      // in local storage before anything opens. Only after the save
-      // succeeds does the viewer ("Open with") open.
-      let saved: { uri: string };
-      try {
-        saved = await Filesystem.writeFile({
-          path: fileName,
-          data: base64,
-          directory: Directory.Documents,
-        });
-      } catch (documentsError) {
-        // Some devices block the public Documents folder — fall back to
-        // the app cache so the PDF still opens, and say so plainly.
-        console.warn('Could not save PDF to Documents, using cache', documentsError);
-        alert('Could not save the PDF to Documents. Opening a temporary copy instead.');
-        saved = await Filesystem.writeFile({
-          path: fileName,
-          data: base64,
-          directory: Directory.Cache,
-        });
+    return await saveAndOpenPdf(doc, fileName);
+  } catch (e) {
+    console.error('PDF download failed', e);
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Short table PDFs (ration report): a title, a small info table, then one
+// or more real tables with a header row, alternating row shading and a
+// bold total row — instead of long plain-text lines.
+// ---------------------------------------------------------------------------
+
+export interface PdfTable {
+  title?: string;
+  headers: string[];
+  rows: string[][];
+  /** A bold closing row (e.g. totals), drawn with a top border. */
+  totalRow?: string[];
+}
+
+const PAGE_MARGIN = 15;
+const PAGE_WIDTH = 210;
+const PAGE_BOTTOM = 280;
+const TABLE_FONT = 10;
+
+function pdfTableColumnWidths(
+  doc: jsPDF,
+  headers: string[],
+  rows: string[][],
+  totalRow?: string[],
+): number[] {
+  const usable = PAGE_WIDTH - PAGE_MARGIN * 2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(TABLE_FONT);
+  const widths = headers.map((h) => doc.getTextWidth(toPdfSafe(h)) + 4);
+  doc.setFont('helvetica', 'normal');
+  const allRows = totalRow ? [...rows, totalRow] : rows;
+  for (const row of allRows) {
+    row.forEach((cell, i) => {
+      if (i >= widths.length) return;
+      widths[i] = Math.max(widths[i], doc.getTextWidth(toPdfSafe(cell)) + 4);
+    });
+  }
+  const total = widths.reduce((a, b) => a + b, 0);
+  if (total > usable) {
+    // Shrink proportionally, but never below 18 mm a column.
+    const min = 18;
+    const excess = total - usable;
+    const shrinkable = widths.reduce((a, w) => a + Math.max(0, w - min), 0);
+    if (shrinkable > 0) {
+      const scale = Math.max(0, (shrinkable - excess) / shrinkable);
+      for (let i = 0; i < widths.length; i++) {
+        widths[i] = min + Math.max(0, widths[i] - min) * scale;
       }
-      // Save is done; confirm it visibly, then open the PDF in a viewer
-      // app (shows the "Open with" chooser with the phone's PDF apps).
-      // If no PDF viewer is installed this throws and the caller shows
-      // the "no viewer" message.
-      alert(`PDF saved successfully to Documents: ${fileName}`);
-      await FileOpener.open({
-        filePath: saved.uri,
-        contentType: 'application/pdf',
-      });
-      return true;
     }
-    doc.save(fileName);
-    alert(`PDF downloaded successfully: ${fileName}`);
+  }
+  return widths;
+}
+
+function buildTablePdf(
+  title: string,
+  info: Array<[string, string]>,
+  tables: PdfTable[],
+): jsPDF {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const usable = PAGE_WIDTH - PAGE_MARGIN * 2;
+  const rowH = 7;
+  let y = 18;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text(toPdfSafe(title), PAGE_MARGIN, y);
+  y += 4;
+  doc.setDrawColor(16, 122, 87);
+  doc.setLineWidth(0.6);
+  doc.line(PAGE_MARGIN, y, PAGE_WIDTH - PAGE_MARGIN, y);
+  y += 7;
+
+  // Small info table: label (bold) | value, alternating row shading.
+  if (info.length > 0) {
+    const labelW = 48;
+    const valueW = usable - labelW;
+    doc.setFontSize(TABLE_FONT);
+    info.forEach(([label, value], idx) => {
+      const lines = doc.splitTextToSize(toPdfSafe(value) || ' ', valueW - 4);
+      const h = Math.max(rowH, lines.length * 5 + 2);
+      if (y + h > PAGE_BOTTOM) {
+        doc.addPage();
+        y = 18;
+      }
+      if (idx % 2 === 1) {
+        doc.setFillColor(243, 244, 246);
+        doc.rect(PAGE_MARGIN, y, usable, h, 'F');
+      }
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.2);
+      doc.rect(PAGE_MARGIN, y, usable, h);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text(toPdfSafe(label), PAGE_MARGIN + 2, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(lines, PAGE_MARGIN + labelW + 2, y + 5);
+      y += h;
+    });
+    y += 4;
+  }
+
+  const drawHeader = (headers: string[], widths: number[]): void => {
+    doc.setFillColor(16, 122, 87);
+    doc.rect(PAGE_MARGIN, y, usable, rowH, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(TABLE_FONT);
+    doc.setTextColor(255, 255, 255);
+    let x = PAGE_MARGIN;
+    headers.forEach((h, i) => {
+      doc.text(toPdfSafe(h), x + 2, y + 5);
+      x += widths[i];
+    });
+    doc.setTextColor(31, 41, 55);
+    y += rowH;
+  };
+
+  for (const table of tables) {
+    if (table.title) {
+      if (y + rowH + 4 > PAGE_BOTTOM) {
+        doc.addPage();
+        y = 18;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(6, 95, 70);
+      doc.text(toPdfSafe(table.title), PAGE_MARGIN, y + 4);
+      doc.setTextColor(31, 41, 55);
+      y += 9;
+    }
+    const widths = pdfTableColumnWidths(doc, table.headers, table.rows, table.totalRow);
+    const allRows: Array<{ cells: string[]; total: boolean }> = [
+      ...table.rows.map((cells) => ({ cells, total: false })),
+      ...(table.totalRow ? [{ cells: table.totalRow, total: true }] : []),
+    ];
+    drawHeader(table.headers, widths);
+    allRows.forEach(({ cells, total }, rowIdx) => {
+      // Wrap long cells; the row is as tall as its tallest cell.
+      doc.setFont('helvetica', total ? 'bold' : 'normal');
+      doc.setFontSize(TABLE_FONT);
+      const wrapped = cells.map((cell, i) =>
+        doc.splitTextToSize(toPdfSafe(cell) || ' ', Math.max(10, widths[i] - 4)),
+      );
+      const lines = Math.max(...wrapped.map((w) => w.length), 1);
+      const h = Math.max(rowH, lines * 5 + 2);
+      if (y + h > PAGE_BOTTOM) {
+        doc.addPage();
+        y = 18;
+        drawHeader(table.headers, widths);
+      }
+      if (total) {
+        doc.setFillColor(236, 253, 245);
+        doc.rect(PAGE_MARGIN, y, usable, h, 'F');
+        doc.setDrawColor(16, 122, 87);
+        doc.setLineWidth(0.5);
+        doc.line(PAGE_MARGIN, y, PAGE_WIDTH - PAGE_MARGIN, y);
+      } else if (rowIdx % 2 === 1) {
+        doc.setFillColor(249, 250, 251);
+        doc.rect(PAGE_MARGIN, y, usable, h, 'F');
+      }
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.2);
+      doc.rect(PAGE_MARGIN, y, usable, h);
+      let x = PAGE_MARGIN;
+      wrapped.forEach((cellLines, i) => {
+        // Numbers right-aligned, text left-aligned.
+        const isNumber = /^-?[\d,]+(\.\d+)?$/.test((cells[i] || '').trim());
+        const textX = isNumber ? x + widths[i] - 2 : x + 2;
+        doc.text(cellLines, textX, y + 5, { align: isNumber ? 'right' : 'left' });
+        x += widths[i];
+      });
+      y += h;
+    });
+    y += 5;
+  }
+  return doc;
+}
+
+/** Save the PDF (Documents first, then open it) — shared by both PDF kinds. */
+async function saveAndOpenPdf(doc: jsPDF, fileName: string): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) {
+    const base64 = doc.output('datauristring').split(',')[1];
+    // Save FIRST to the phone's Documents folder, so the PDF is really
+    // in local storage before anything opens. Only after the save
+    // succeeds does the viewer ("Open with") open.
+    let saved: { uri: string };
+    try {
+      saved = await Filesystem.writeFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Documents,
+      });
+    } catch (documentsError) {
+      // Some devices block the public Documents folder — fall back to
+      // the app cache so the PDF still opens, and say so plainly.
+      console.warn('Could not save PDF to Documents, using cache', documentsError);
+      alert('Could not save the PDF to Documents. Opening a temporary copy instead.');
+      saved = await Filesystem.writeFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Cache,
+      });
+    }
+    // Save is done; confirm it visibly, then open the PDF in a viewer
+    // app (shows the "Open with" chooser with the phone's PDF apps).
+    // If no PDF viewer is installed this throws and the caller shows
+    // the "no viewer" message.
+    alert(`PDF saved successfully to Documents: ${fileName}`);
+    await FileOpener.open({
+      filePath: saved.uri,
+      contentType: 'application/pdf',
+    });
     return true;
+  }
+  doc.save(fileName);
+  alert(`PDF downloaded successfully: ${fileName}`);
+  return true;
+}
+
+/** Short table PDF: title + info table + one or more real tables. */
+export async function downloadTablePdf(
+  fileName: string,
+  title: string,
+  info: Array<[string, string]>,
+  tables: PdfTable[],
+): Promise<boolean> {
+  try {
+    const doc = buildTablePdf(title, info, tables);
+    return await saveAndOpenPdf(doc, fileName);
   } catch (e) {
     console.error('PDF download failed', e);
     return false;

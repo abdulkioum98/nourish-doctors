@@ -225,16 +225,26 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setAuthenticating(true);
 
     try {
+      // Fetch by username only (case-insensitive), then compare the
+      // password here. The old version compared both columns in the
+      // query, so a stored username/password that differed only by case
+      // or a stray space silently returned "no row" — and the real cause
+      // (row missing vs password wrong) was hidden.
       const { data, error } = await supabase
         .from('admin_users')
         .select('*')
-        .eq('username', username.trim())
-        .eq('password', password.trim());
+        .ilike('username', username.trim());
 
       if (error) {
-        setLoginError('Database Connection Error!');
+        setLoginError(
+          'Database Connection Error! Check that the admin_users table exists in the same Supabase project the app uses (the one in .env), and that admin-setup.sql was run there.',
+        );
       } else if (!data || data.length === 0) {
-        setLoginError('Invalid Username or Password!');
+        setLoginError(
+          'Username not found. Run admin-setup.sql in Supabase (same project as the app) and try again.',
+        );
+      } else if ((data[0].password ?? '').trim() !== password.trim()) {
+        setLoginError('Wrong password for this username.');
       } else {
         localStorage.setItem('is_admin_logged_in', 'true');
         localStorage.setItem('admin_username', username.trim());

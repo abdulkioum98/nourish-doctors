@@ -3,6 +3,7 @@ import {
   Calculator,
   Wheat,
   Scale,
+  HeartPulse,
   Sparkles,
   Ruler,
   BarChart3,
@@ -93,6 +94,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
   const cattleServices: CardItem[] = [
     { id: 'cattle-info', title: 'Cattle Ration Calculator', icon: <Calculator className="text-emerald-700" size={18} /> },
     { id: 'weight-measure', title: 'Live Weight Estimator', icon: <Scale className="text-emerald-700" size={18} /> },
+    { id: 'cattle-health', title: 'Cattle Health', icon: <HeartPulse className="text-emerald-700" size={18} /> },
     { id: 'nourish-feeds-reference', title: 'Nourish Cattle Feeds', icon: <Wheat className="text-emerald-700" size={18} /> },
   ];
 

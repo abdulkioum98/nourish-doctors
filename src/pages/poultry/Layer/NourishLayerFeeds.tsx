@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
 import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, Package, Search } from 'lucide-react';
+import { layerImageFor } from '../../../lib/feedDetails';
 
 interface LayerFeedData {
   id: number;
@@ -101,15 +102,27 @@ export default function LayerFeed() {
     );
   }
 
+  // One spec row: label + value, used in the card's compact grid.
+  // (value != null, so a real 0 still shows as "0" and only a missing
+  // value shows "-".)
+  const spec = (label: string, value: string | number | undefined | null, suffix = '') => (
+    <div className="flex items-baseline justify-between gap-2 py-1 border-b border-amber-50 last:border-0">
+      <span className="text-[11px] text-slate-500">{label}</span>
+      <span className="text-xs font-semibold text-slate-700 text-right">
+        {value != null && value !== '' ? `${value}${suffix}` : '-'}
+      </span>
+    </div>
+  );
+
   return (
     <div className=" p-4 space-y-6 font-sans">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-amber-700 to-amber-900 rounded-2xl p-2 text-white shadow-md flex items-center justify-between">
+      {/* Header — kept small so it takes little space */}
+      <div className="bg-gradient-to-r from-amber-700 to-amber-900 rounded-2xl px-3 py-1.5 text-white shadow-md flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Nourish Layer Feeds</h1>
+          <h1 className="text-lg sm:text-xl font-bold">Nourish Layer Feeds</h1>
         </div>
-        <div className="bg-white/10 p-3 rounded-xl">
-          <Package size={28} className="text-white" />
+        <div className="bg-white/10 p-2 rounded-xl">
+          <Package size={22} className="text-white" />
         </div>
       </div>
 
@@ -127,62 +140,82 @@ export default function LayerFeed() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-amber-50 text-amber-900 border-b border-amber-100 text-xs uppercase tracking-wider">
-                <th className="p-3 text-center">Feed Name</th>
-                <th className="p-3 text-center">Moisture Max (%)</th>
-                <th className="p-3 text-center">Protein Min (%)</th>
-                <th className="p-3 text-center">Fiber Max (%)</th>
-                <th className="p-3 text-center">Calcium Min (%)</th>
-                <th className="p-3 text-center">Avail. Phos. Min (%)</th>
-                <th className="p-3 text-center">Methionine Min (%)</th>
-                <th className="p-3 text-center">Lysine Min (%)</th>
-                <th className="p-3 text-center">Energy (kcal/kg)</th>
-                <th className="p-3 text-center">Feed Form</th>
-                <th className="p-3 text-center">Bird Stage / Age</th>
-                <th className="p-3 text-center">Price</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
-              {filteredFeeds.length > 0 ? (
-                loading ? null : filteredFeeds.map((row, index) => (
-                  <tr
-                    key={row.id || index}
-                    className={`${
-                      index % 2 === 0 ? 'bg-white' : 'bg-amber-50/40'
-                    } hover:bg-amber-100/60 transition-colors`}
-                  >
-                    <td className="p-3 text-center font-bold text-amber-800">{row.feed_name}</td>
-                    <td className="p-3 text-center">{row.moisture_max_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.protein_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.fiber_max_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.calcium_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.avail_phosphorus_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.methionine_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.lysine_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.metabolisable_energy_kcal_kg ?? '-'}</td>
-                    <td className="p-3 text-center font-medium">{row.feed_form ?? '-'}</td>
-                    <td className="p-3 text-center">{row.bird_age_or_stage ?? '-'}</td>
-                    <td className="p-3 text-center text-slate-400 font-medium">
-                      {row.price ? `${row.price} BDT` : 'Not Set'}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={12} className="text-center p-6 text-slate-400">
-                    No Feed Data Found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Feed Cards */}
+      {filteredFeeds.length > 0 ? (
+        loading ? null : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredFeeds.map((row) => {
+              const image = layerImageFor(row.feed_name);
+              return (
+                <article
+                  key={row.id}
+                  className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden flex flex-col"
+                >
+                  {/* Bag photo (or a placeholder when the file has none) */}
+                  <div className="bg-amber-50/70 flex items-center justify-center h-52 p-3">
+                    {image ? (
+                      <img
+                        src={image}
+                        alt={row.feed_name}
+                        className="max-h-full max-w-full object-contain"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-amber-300">
+                        <Package size={56} />
+                        <span className="text-xs font-semibold">No photo</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 flex flex-col gap-3 flex-1">
+                    {/* Name + price */}
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-base font-bold text-amber-800 leading-tight">
+                        {row.feed_name}
+                      </h2>
+                      <span className="text-sm font-bold text-emerald-700 whitespace-nowrap">
+                        {row.price ? `${row.price} BDT` : 'Not Set'}
+                      </span>
+                    </div>
+
+                    {/* Key figures */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-amber-50 rounded-xl py-2 px-1">
+                        <div className="text-[10px] uppercase tracking-wide text-amber-700/70 font-bold">Protein</div>
+                        <div className="text-sm font-bold text-amber-900">{row.protein_min_pct ?? '-'}%</div>
+                      </div>
+                      <div className="bg-amber-50 rounded-xl py-2 px-1">
+                        <div className="text-[10px] uppercase tracking-wide text-amber-700/70 font-bold">Energy</div>
+                        <div className="text-sm font-bold text-amber-900">{row.metabolisable_energy_kcal_kg ?? '-'}</div>
+                      </div>
+                      <div className="bg-amber-50 rounded-xl py-2 px-1">
+                        <div className="text-[10px] uppercase tracking-wide text-amber-700/70 font-bold">Form</div>
+                        <div className="text-sm font-bold text-amber-900">{row.feed_form ?? '-'}</div>
+                      </div>
+                    </div>
+
+                    {/* Full specification (from the database) */}
+                    <div>
+                      {spec('Moisture Max', row.moisture_max_pct, '%')}
+                      {spec('Fiber Max', row.fiber_max_pct, '%')}
+                      {spec('Calcium Min', row.calcium_min_pct, '%')}
+                      {spec('Avail. Phos. Min', row.avail_phosphorus_min_pct, '%')}
+                      {spec('Methionine Min', row.methionine_min_pct, '%')}
+                      {spec('Lysine Min', row.lysine_min_pct, '%')}
+                      {spec('Bird Stage / Age', row.bird_age_or_stage)}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-6 text-center text-slate-400 text-sm">
+          No Feed Data Found
         </div>
-      </div>
+      )}
     </div>
   );
 }

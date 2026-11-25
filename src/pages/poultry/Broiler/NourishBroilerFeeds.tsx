@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
 import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
-import { Loader2, Package, Search } from 'lucide-react';
+import { Loader2, Package } from 'lucide-react';
+import { broilerExtraFor } from '../../../lib/feedDetails';
 
 interface BroilerFeedData {
   id: number;
@@ -21,9 +22,7 @@ interface BroilerFeedData {
 
 export default function BroilerFeed() {
   const [feeds, setFeeds] = useState<BroilerFeedData[]>([]);
-  const [filteredFeeds, setFilteredFeeds] = useState<BroilerFeedData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>('');
 
   const tableName = 'broiler_feeds';
 
@@ -44,7 +43,6 @@ export default function BroilerFeed() {
           void fetchBroilerFeedsRows().then((rows) => {
             void setCached('broiler_feeds:all', rows);
             setFeeds(rows);
-            setFilteredFeeds(rows);
           });
         }
       )
@@ -54,13 +52,6 @@ export default function BroilerFeed() {
       supabase.removeChannel(channel);
     };
   }, []);
-
-  useEffect(() => {
-    const result = feeds.filter((item) =>
-      item.feed_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredFeeds(result);
-  }, [searchTerm, feeds]);
 
   // Exact Supabase query, used both as the cache-first fetcher and on realtime events.
   const fetchBroilerFeedsRows = async (): Promise<BroilerFeedData[]> => {
@@ -87,7 +78,6 @@ export default function BroilerFeed() {
       fetchBroilerFeedsRows,
       (rows) => {
         setFeeds(rows);
-        setFilteredFeeds(rows);
       },
       () => setLoading(false),
     );
@@ -101,88 +91,187 @@ export default function BroilerFeed() {
     );
   }
 
+  // The specification rows: Max / Min in brackets, and the rows alternate
+  // a light background so they are easy to scan.
+  // (A real 0 still shows as "0"; only a missing value shows "-".)
+  const specRows = (row: BroilerFeedData): Array<[string, string]> => {
+    const value = (v: string | number | undefined | null, suffix = '') =>
+      v != null && v !== '' ? `${v}${suffix}` : '-';
+    return [
+      ['Moisture (Max)', value(row.moisture_max_pct, '%')],
+      ['Fiber (Max)', value(row.fiber_max_pct, '%')],
+      ['Calcium (Min)', value(row.calcium_min_pct, '%')],
+      ['Phosphorus (Max)', value(row.phosphorus_max_pct, '%')],
+      ['Methionine (Min)', value(row.methionine_min_pct, '%')],
+      ['Lysine (Min)', value(row.lysine_min_pct, '%')],
+      ['Bird Age / Stage', value(row.bird_age_or_stage)],
+    ];
+  };
+
   return (
     <div className=" p-4 space-y-6 font-sans">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-amber-700 to-amber-900 rounded-2xl p-2 text-white shadow-md flex items-center justify-between">
+      {/* Header — kept small so it takes little space */}
+      <div className="bg-gradient-to-r from-amber-700 to-amber-900 rounded-2xl px-3 py-1.5 text-white shadow-md flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Nourish Broiler Feeds</h1>
+          <h1 className="text-lg sm:text-xl font-bold">Nourish Broiler Feeds</h1>
         </div>
-        <div className="bg-white/10 p-3 rounded-xl">
-          <Package size={28} className="text-white" />
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="flex justify-between bg-white p-4 rounded-2xl border border-amber-100 shadow-sm">
-        <div className="flex items-center bg-white border border-amber-200 rounded-xl px-4 py-2 shadow-sm w-full sm:w-80">
-          <Search size={18} className="text-amber-600 mr-2 shrink-0" />
-          <input
-            type="text"
-            placeholder="Search feed name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent text-sm text-slate-700 focus:outline-none"
-          />
+        <div className="bg-white/10 p-2 rounded-xl">
+          <Package size={22} className="text-white" />
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-amber-50 text-amber-900 border-b border-amber-100 text-xs uppercase tracking-wider">
-                <th className="p-3 text-center">Feed Name</th>
-                <th className="p-3 text-center">Moisture Max (%)</th>
-                <th className="p-3 text-center">Protein Min (%)</th>
-                <th className="p-3 text-center">Fiber Max (%)</th>
-                <th className="p-3 text-center">Calcium Min (%)</th>
-                <th className="p-3 text-center">Phosphorus Max (%)</th>
-                <th className="p-3 text-center">Methionine Min (%)</th>
-                <th className="p-3 text-center">Lysine Min (%)</th>
-                <th className="p-3 text-center">Energy (kcal/kg)</th>
-                <th className="p-3 text-center">Feed Form</th>
-                <th className="p-3 text-center">Bird Age / Stage</th>
-                <th className="p-3 text-center">Price</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
-              {filteredFeeds.length > 0 ? (
-                loading ? null : filteredFeeds.map((row, index) => (
-                  <tr
-                    key={row.id || index}
-                    className={`${
-                      index % 2 === 0 ? 'bg-white' : 'bg-amber-50/40'
-                    } hover:bg-amber-100/60 transition-colors`}
-                  >
-                    <td className="p-3 text-center font-bold text-amber-800">{row.feed_name}</td>
-                    <td className="p-3 text-center">{row.moisture_max_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.protein_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.fiber_max_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.calcium_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.phosphorus_max_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.methionine_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.lysine_min_pct ?? '-'}</td>
-                    <td className="p-3 text-center">{row.metabolisable_energy_kcal_kg ?? '-'}</td>
-                    <td className="p-3 text-center font-medium">{row.feed_form ?? '-'}</td>
-                    <td className="p-3 text-center">{row.bird_age_or_stage ?? '-'}</td>
-                    <td className="p-3 text-center text-slate-400 font-medium">
-                      {row.price ? `${row.price} BDT` : 'Not Set'}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={12} className="text-center p-6 text-slate-400">
-                    No Feed Data Found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Feed Cards */}
+      {feeds.length > 0 ? (
+        loading ? null : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {feeds.map((row) => {
+              const extra = broilerExtraFor(row.feed_name);
+              return (
+                <article
+                  key={row.id}
+                  className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden flex flex-col"
+                >
+                  {/* Bag photo beside the sample (loose feed) photo, so
+                      both are seen together. When a photo is missing the
+                      other one takes the full width; when both are
+                      missing a placeholder shows. */}
+                  <div className="bg-amber-50/70 flex h-52">
+                    {extra?.bagImage ? (
+                      <div className={`flex items-center justify-center p-3 ${extra.feedImage ? 'flex-1 border-r border-amber-100' : 'w-full'}`}>
+                        <img
+                          src={extra.bagImage}
+                          alt={`${row.feed_name} bag`}
+                          className="max-h-full max-w-full object-contain"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
+                    {extra?.feedImage ? (
+                      <div className={`flex items-center justify-center p-3 ${extra.bagImage ? 'flex-1' : 'w-full'}`}>
+                        <img
+                          src={extra.feedImage}
+                          alt={`${row.feed_name} feed`}
+                          className="max-h-full max-w-full object-contain rounded-lg"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
+                    {!extra?.bagImage && !extra?.feedImage ? (
+                      <div className="w-full flex flex-col items-center justify-center gap-2 text-amber-300">
+                        <Package size={56} />
+                        <span className="text-xs font-semibold">No photo</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="p-4 flex flex-col gap-3 flex-1">
+                    {/* Name + bag colour + price */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h2 className="text-base font-bold text-amber-800 leading-tight">
+                          {row.feed_name}
+                        </h2>
+                        {extra && (
+                          <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
+                            <span
+                              className="inline-block w-3 h-3 rounded-full border border-black/10"
+                              style={{ backgroundColor: extra.bagColorHex }}
+                            />
+                            Bag Colour: {extra.bagColor}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-sm font-bold text-emerald-700 whitespace-nowrap">
+                        {row.price ? `${row.price} BDT` : 'Not Set'}
+                      </span>
+                    </div>
+
+                    {/* Key figures */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-amber-50 rounded-xl py-2 px-1">
+                        <div className="text-[10px] uppercase tracking-wide text-amber-700/70 font-bold">Protein (Min)</div>
+                        <div className="text-sm font-bold text-amber-900">{row.protein_min_pct ?? '-'}%</div>
+                      </div>
+                      <div className="bg-amber-50 rounded-xl py-2 px-1">
+                        <div className="text-[10px] uppercase tracking-wide text-amber-700/70 font-bold">Energy</div>
+                        <div className="text-sm font-bold text-amber-900">{row.metabolisable_energy_kcal_kg ?? '-'}</div>
+                      </div>
+                      <div className="bg-amber-50 rounded-xl py-2 px-1">
+                        <div className="text-[10px] uppercase tracking-wide text-amber-700/70 font-bold">Form</div>
+                        <div className="text-sm font-bold text-amber-900">{row.feed_form ?? '-'}</div>
+                      </div>
+                    </div>
+
+                    {/* Full specification (from the database) */}
+                    <div className="rounded-lg overflow-hidden">
+                      {specRows(row).map(([label, value], idx) => (
+                        <div
+                          key={label}
+                          className={`flex items-baseline justify-between gap-2 px-2 py-1 ${
+                            idx % 2 === 0 ? 'bg-amber-50/60' : 'bg-white'
+                          }`}
+                        >
+                          <span className="text-[11px] text-slate-500">{label}</span>
+                          <span className="text-xs font-semibold text-slate-700 text-right">
+                            {value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Extra details from the product file */}
+                    {extra && (
+                      <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 space-y-1.5">
+                        {extra.duration && (
+                          <p className="text-xs text-slate-600">
+                            <span className="font-bold text-slate-700">Use: </span>
+                            {extra.duration}
+                          </p>
+                        )}
+                        {extra.consumption && (
+                          <p className="text-xs text-slate-600">
+                            <span className="font-bold text-slate-700">Consumption: </span>
+                            {extra.consumption}
+                          </p>
+                        )}
+                        {extra.bodyWeight && (
+                          <p className="text-xs text-slate-600">
+                            <span className="font-bold text-slate-700">Body Weight: </span>
+                            {extra.bodyWeight}
+                          </p>
+                        )}
+                        {extra.feedSize && (
+                          <p className="text-xs text-slate-600">
+                            <span className="font-bold text-slate-700">Feed Size: </span>
+                            {extra.feedSize}
+                          </p>
+                        )}
+                        {extra.note && (
+                          <p className="text-xs text-slate-600">{extra.note}</p>
+                        )}
+                        {extra.transition && extra.transition.length > 0 && (
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">Change-over:</p>
+                            <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5">
+                              {extra.transition.map((line) => (
+                                <li key={line}>{line}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-6 text-center text-slate-400 text-sm">
+          No Feed Data Found
         </div>
-      </div>
+      )}
     </div>
   );
 }
