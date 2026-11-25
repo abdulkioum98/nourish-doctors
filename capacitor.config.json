@@ -1,5 +1,1 @@
-{
-  "appId": "com.nourish.rationcalculator",
-  "appName": "Nourish Doctors",
-  "webDir": "dist"
-}
+{"appId":"com.nourish.rationcalculator","appName":"Nourish Doctors","server":{"cleartext":true,"url":"https://nourish-doctors.online"},"webDir":"dist"}
