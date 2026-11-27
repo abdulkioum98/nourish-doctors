@@ -16,12 +16,14 @@ export interface FeedItem {
   price?: number;
   tp_per_kg?: number;
   price_per_kg?: number;
+  bag_size_kg?: number;
   dm?: number;
   cp?: number;
   me?: number;
   category?: 'dairy' | 'fattening' | string;
   bag_image_url?: string;
   sample_image_url?: string;
+  sort_order?: number;
   // Extra nutrients from the database (stored WITHOUT "%", e.g. "12"
   // or "65-70"). Shown on the card when present; the product (PPTX)
   // value is the fallback.
@@ -103,7 +105,7 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
         const { data, error } = await supabase
           .from('cattle_feeds')
           .select('*')
-          .order('id', { ascending: true });
+          .order('sort_order', { ascending: true });
         if (error) {
           console.error('Error fetching nourish feeds:', error);
           return [];
@@ -124,6 +126,10 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
     const val = feed.price ?? feed.tp_per_kg ?? feed.price_per_kg ?? 0;
     return Number(val).toFixed(2);
   };
+
+  // Bag price: the per-kg price × the row's standard bag size.
+  const bagPrice = (feed: FeedItem) =>
+    (Number(feed.price ?? feed.tp_per_kg ?? feed.price_per_kg ?? 0) * (feed.bag_size_kg ?? 0)).toFixed(2);
 
   // The database row for a product card (by name), if the product is in
   // cattle_feeds. Its DM / ME / price are what the calculator uses.
@@ -149,6 +155,28 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
     tabMatches(dbFeedForProduct(p.name)?.category),
   );
   const visibleDbOnly = dbOnlyFeeds.filter((f) => tabMatches(f.category));
+
+  // One combined card list in the screenshot sequence (sort_order). A
+  // product card uses its matched DB row's sort_order; a DB-only card
+  // uses its own. Cards with no sort_order go last — products in the
+  // static array order, then DB-only rows.
+  const visibleCards = [
+    ...visibleProducts.map((product) => ({
+      kind: 'product' as const,
+      product,
+      order: dbFeedForProduct(product.name)?.sort_order ?? null,
+    })),
+    ...visibleDbOnly.map((feed) => ({
+      kind: 'db' as const,
+      feed,
+      order: feed.sort_order ?? null,
+    })),
+  ].sort((a, b) => {
+    if (a.order == null && b.order == null) return 0;
+    if (a.order == null) return 1;
+    if (b.order == null) return -1;
+    return a.order - b.order;
+  });
 
   // Total items on the page: every product card plus every database feed
   // that has no product card.
@@ -214,7 +242,9 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleProducts.map((product) => {
+            {visibleCards.map((card) => {
+              if (card.kind === 'product') {
+                const product = card.product;
               const db = dbFeedForProduct(product.name);
               const figures = productKeyFigures(product, db);
               // Bag + sample photos: the admin-uploaded image wins when
@@ -259,15 +289,24 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
                     ) : null}
                   </div>
                   <div className="p-4 flex flex-col gap-3 flex-1">
-                    {/* Name with the price beside it (like Broiler / Layer) */}
+                    {/* Name with the per-kg price beside it (like Broiler / Layer),
+                        and the bag price for the row's standard bag size just below it */}
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="text-base font-bold text-emerald-800 leading-tight">
                         {product.name}
                       </h4>
                       {db && (
-                        <span className="text-base font-bold text-emerald-700 whitespace-nowrap shrink-0">
-                          ৳{getPrice(db)}
-                        </span>
+                        <div className="flex flex-col items-end gap-0.5 shrink-0">
+                          <span className="text-base font-bold text-emerald-700 whitespace-nowrap">
+                            ৳{getPrice(db)}
+                            <span className="text-xs text-slate-400 font-semibold">/kg</span>
+                          </span>
+                          {Number(getPrice(db)) > 0 && db.bag_size_kg != null && (
+                            <span className="text-xs text-slate-500 whitespace-nowrap">
+                              Bag size: {db.bag_size_kg} kg : ৳{bagPrice(db)}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                     {/* Focused boxes: DM / CP / Energy, falling back to
@@ -332,10 +371,10 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
                   </div>
                 </article>
               );
-            })}
-            {/* Database feeds with no product card — shown as their own
-                cards, so the old top table loses nothing. */}
-            {visibleDbOnly.map((feed) => {
+            }
+            // Database feeds with no product card — shown as their own
+            // cards, so the old top table loses nothing.
+            const feed = card.feed;
               // Bag + sample photos from the database row (no static
               // fallback for these feeds).
               const bagImage = hasFeedImage(feed.bag_image_url)
@@ -378,14 +417,23 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
                   ) : null}
                 </div>
                 <div className="p-4 flex flex-col gap-3 flex-1">
-                  {/* Name with the price beside it (like Broiler / Layer) */}
+                  {/* Name with the per-kg price beside it (like Broiler / Layer),
+                      and the bag price for the row's standard bag size just below it */}
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="text-base font-bold text-emerald-800 leading-tight">
                       {feed.name}
                     </h4>
-                    <span className="text-base font-bold text-emerald-700 whitespace-nowrap shrink-0">
-                      ৳{getPrice(feed)}
-                    </span>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      <span className="text-base font-bold text-emerald-700 whitespace-nowrap">
+                        ৳{getPrice(feed)}
+                        <span className="text-xs text-slate-400 font-semibold">/kg</span>
+                      </span>
+                      {Number(getPrice(feed)) > 0 && feed.bag_size_kg != null && (
+                        <span className="text-xs text-slate-500 whitespace-nowrap">
+                          Bag size: {feed.bag_size_kg} kg : ৳{bagPrice(feed)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="bg-emerald-50 rounded-xl py-2 px-1">

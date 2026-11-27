@@ -19,6 +19,8 @@ interface BroilerFeedData {
   feed_form?: string;
   bird_age_or_stage?: string;
   price?: number;
+  bag_size_kg?: number;
+  sort_order?: number;
   bag_image_url?: string;
   sample_image_url?: string;
 }
@@ -62,7 +64,7 @@ export default function BroilerFeed() {
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
-        .order('id', { ascending: true });
+        .order('sort_order', { ascending: true });
 
       if (error) {
         console.error('Error fetching broiler feeds:', error);
@@ -111,6 +113,15 @@ export default function BroilerFeed() {
     ];
   };
 
+  // Screenshot sequence: sort_order ascending, rows without one last,
+  // so even a stale offline cache lists in the screenshot order.
+  const sortedFeeds = [...feeds].sort((a, b) => {
+    if (a.sort_order == null && b.sort_order == null) return 0;
+    if (a.sort_order == null) return 1;
+    if (b.sort_order == null) return -1;
+    return a.sort_order - b.sort_order;
+  });
+
   return (
     <div className=" p-4 space-y-6 font-sans">
       {/* Header — kept small so it takes little space */}
@@ -127,7 +138,7 @@ export default function BroilerFeed() {
       {feeds.length > 0 ? (
         loading ? null : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {feeds.map((row) => {
+            {sortedFeeds.map((row) => {
               const extra = broilerExtraFor(row.feed_name);
               // Bag + sample photos: the admin-uploaded image wins when
               // present, else the static photo from the product file.
@@ -176,7 +187,8 @@ export default function BroilerFeed() {
                   </div>
 
                   <div className="p-4 flex flex-col gap-3 flex-1">
-                    {/* Name + bag colour + price */}
+                    {/* Name + bag colour + per-kg price, with the bag price
+                        for the row's standard bag size just below it */}
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <h2 className="text-base font-bold text-amber-800 leading-tight">
@@ -192,9 +204,23 @@ export default function BroilerFeed() {
                           </p>
                         )}
                       </div>
-                      <span className="text-sm font-bold text-emerald-700 whitespace-nowrap">
-                        {row.price ? `${row.price} BDT` : 'Not Set'}
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                        {row.price ? (
+                          <span className="text-sm font-bold text-emerald-700 whitespace-nowrap">
+                            ৳{row.price}
+                            <span className="text-xs text-slate-400 font-semibold">/kg</span>
+                          </span>
+                        ) : (
+                          <span className="text-sm font-bold text-emerald-700 whitespace-nowrap">
+                            Not Set
+                          </span>
+                        )}
+                        {row.price && row.bag_size_kg != null && (
+                          <span className="text-xs text-slate-500 whitespace-nowrap">
+                            Bag size: {row.bag_size_kg} kg : ৳{(Number(row.price) * row.bag_size_kg).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Key figures */}

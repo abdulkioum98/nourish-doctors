@@ -111,7 +111,7 @@ const GENERIC_TABLES: GenericTableDef[] = [
     label: 'Broiler Feeds',
     table: 'broiler_feeds',
     cacheKey: 'broiler_feeds:all',
-    orderBy: { column: 'id', ascending: true },
+    orderBy: { column: 'sort_order', ascending: true },
     fields: [
       { key: 'feed_name', label: 'Feed Name', type: 'text', required: true },
       { key: 'moisture_max_pct', label: 'Moisture Max (%)', type: 'number' },
@@ -125,6 +125,7 @@ const GENERIC_TABLES: GenericTableDef[] = [
       { key: 'feed_form', label: 'Feed Form', type: 'text' },
       { key: 'bird_age_or_stage', label: 'Bird Age / Stage', type: 'text' },
       { key: 'price', label: 'Price (TK)', type: 'number' },
+      { key: 'bag_size_kg', label: 'Bag Size (kg)', type: 'number' },
       { key: 'bag_image_url', label: 'Bag Photo', type: 'image' },
       { key: 'sample_image_url', label: 'Sample Photo', type: 'image' },
     ],
@@ -134,7 +135,7 @@ const GENERIC_TABLES: GenericTableDef[] = [
     label: 'Layer Feeds',
     table: 'layer_feeds',
     cacheKey: 'layer_feeds:all',
-    orderBy: { column: 'id', ascending: true },
+    orderBy: { column: 'sort_order', ascending: true },
     fields: [
       { key: 'feed_name', label: 'Feed Name', type: 'text', required: true },
       { key: 'moisture_max_pct', label: 'Moisture Max (%)', type: 'number' },
@@ -148,6 +149,7 @@ const GENERIC_TABLES: GenericTableDef[] = [
       { key: 'feed_form', label: 'Feed Form', type: 'text' },
       { key: 'bird_age_or_stage', label: 'Bird Age / Stage', type: 'text' },
       { key: 'price', label: 'Price (TK)', type: 'number' },
+      { key: 'bag_size_kg', label: 'Bag Size (kg)', type: 'number' },
       { key: 'bag_image_url', label: 'Bag Photo', type: 'image' },
       { key: 'sample_image_url', label: 'Sample Photo', type: 'image' },
     ],
@@ -157,7 +159,7 @@ const GENERIC_TABLES: GenericTableDef[] = [
     label: 'Floating Fish Feeds',
     table: 'floating_fish_feeds',
     cacheKey: 'floating_fish_feeds:all',
-    orderBy: { column: 'id', ascending: true },
+    orderBy: { column: 'sort_order', ascending: true },
     fields: [
       { key: 'feed_name', label: 'Feed Name', type: 'text', required: true },
       { key: 'species', label: 'Species', type: 'text' },
@@ -191,7 +193,7 @@ const GENERIC_TABLES: GenericTableDef[] = [
     label: 'Sinking Fish Feeds',
     table: 'sinking_fish_feeds',
     cacheKey: 'sinking_fish_feeds:all',
-    orderBy: { column: 'id', ascending: true },
+    orderBy: { column: 'sort_order', ascending: true },
     fields: [
       { key: 'feed_name', label: 'Feed Name', type: 'text', required: true },
       { key: 'species', label: 'Species', type: 'text' },
@@ -242,6 +244,23 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [dmReferences, setDmReferences] = useState<any[]>([]);
   const [breeds, setBreeds] = useState<any[]>([]);
 
+  // Training Materials (PDF / PPTX library) — custom tab, not generic.
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [materialsLoading, setMaterialsLoading] = useState(false);
+  const [matTitle, setMatTitle] = useState('');
+  const [matCategory, setMatCategory] = useState<'Poultry' | 'Cattle' | 'Fish'>('Poultry');
+  const [matFile, setMatFile] = useState<File | null>(null);
+  const [matUploading, setMatUploading] = useState(false);
+  const [matMsg, setMatMsg] = useState('');
+  const [matError, setMatError] = useState('');
+  // Editing a material — null when the edit modal is closed.
+  const [editMat, setEditMat] = useState<any | null>(null);
+  const [editMatTitle, setEditMatTitle] = useState('');
+  const [editMatCategory, setEditMatCategory] = useState<'Poultry' | 'Cattle' | 'Fish'>('Poultry');
+  const [editMatFile, setEditMatFile] = useState<File | null>(null);
+  const [editMatSaving, setEditMatSaving] = useState(false);
+  const [editMatError, setEditMatError] = useState('');
+
   // Editing ID Tracker
   const [editId, setEditId] = useState<string | number | null>(null);
 
@@ -267,6 +286,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [nutCalcium, setNutCalcium] = useState('');
   const [nutPhosphorus, setNutPhosphorus] = useState('');
   const [nutTdn, setNutTdn] = useState('');
+  const [cattleBagSize, setCattleBagSize] = useState('');
 
   // Form Fields - DM Reference
   const [stageName, setStageName] = useState('');
@@ -283,6 +303,9 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [genericForm, setGenericForm] = useState<Record<string, string>>({});
   const [genericEditId, setGenericEditId] = useState<string | number | null>(null);
   const [genericShowForm, setGenericShowForm] = useState(false);
+
+  // Search text for the table on the active tab (cleared on tab change).
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Change Password state — the username is remembered at login so the
   // password can be changed from inside the panel, no SQL needed.
@@ -375,7 +398,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     await loadCachedFirst<any[]>(
       'cattle_feeds:all',
       async () => {
-        const { data, error } = await supabase.from('cattle_feeds').select('*').order('created_at', { ascending: true });
+        const { data, error } = await supabase.from('cattle_feeds').select('*').order('sort_order', { ascending: true });
         if (error) {
           console.error('Error fetching nourish feeds:', error);
           return [];
@@ -391,7 +414,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     await loadCachedFirst<any[]>(
       'other_ingredients:all',
       async () => {
-        const { data, error } = await supabase.from('other_ingredients').select('*').order('created_at', { ascending: true });
+        const { data, error } = await supabase.from('other_ingredients').select('*').order('name', { ascending: true });
         if (error) {
           console.error('Error fetching other ingredients:', error);
           return [];
@@ -407,7 +430,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     await loadCachedFirst<any[]>(
       'dm_references:all',
       async () => {
-        const { data, error } = await supabase.from('dm_references').select('*').order('target_group', { ascending: true });
+        const { data, error } = await supabase.from('dm_references').select('*').order('stage_name', { ascending: true });
         if (error) {
           console.error('Error fetching DM references:', error);
           return [];
@@ -434,6 +457,25 @@ export default function AdminPage({ onBack }: AdminPageProps) {
       onDone,
     );
   };
+
+  // Training Materials list (latest first). Fetched when the Materials
+  // tab opens — the list is small and changes only when Admin uploads
+  // or deletes, so it is not part of the initial fetchAllData.
+  const fetchMaterials = async () => {
+    setMaterialsLoading(true);
+    const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching materials:', error);
+      setMaterials([]);
+    } else {
+      setMaterials(data || []);
+    }
+    setMaterialsLoading(false);
+  };
+
+  useEffect(() => {
+    if (isLoggedIn && activeTab === 'materials') fetchMaterials();
+  }, [activeTab]);
 
   // Generic table fetch / submit, shared by the six new tabs.
   const fetchGenericTable = async (def: GenericTableDef, onDone?: () => void) => {
@@ -556,6 +598,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setNutCalcium(fresh.calcium_pct || '');
     setNutPhosphorus(fresh.phosphorus_pct || '');
     setNutTdn(fresh.tdn_pct || '');
+    setCattleBagSize(fresh.bag_size_kg ?? '');
     setShowForm(true);
   };
 
@@ -623,6 +666,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setNutCalcium('');
     setNutPhosphorus('');
     setNutTdn('');
+    setCattleBagSize('');
     setStageName('');
     setTargetGroup('dairy');
     setConcentrateRatio('');
@@ -633,6 +677,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
+    setSearchTerm('');
     resetForm();
     resetGenericForm();
   };
@@ -648,6 +693,154 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     else alert('Failed to delete item: ' + error.message);
   };
 
+  // --- Training Materials upload / delete (custom tab) ---
+  const sanitiseFileName = (name: string) =>
+    name.replace(/\s+/g, '-').replace(/[^A-Za-z0-9._-]/g, '');
+
+  const formatMatFileSize = (bytes: number | null | undefined): string => {
+    if (bytes == null || Number.isNaN(bytes) || bytes < 0) return '-';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const matCategoryBadge = (category: string): string => {
+    const c = (category || '').toLowerCase();
+    if (c === 'poultry') return 'bg-amber-100 text-amber-800';
+    if (c === 'cattle') return 'bg-emerald-100 text-emerald-800';
+    if (c === 'fish') return 'bg-cyan-100 text-cyan-800';
+    return 'bg-slate-100 text-slate-700';
+  };
+
+  const handleMaterialUpload = async () => {
+    setMatMsg('');
+    setMatError('');
+    if (!isOnline()) {
+      setMatError('You are offline. Admin changes need internet.');
+      return;
+    }
+    if (matTitle.trim() === '') {
+      setMatError('Please enter a title for the material.');
+      return;
+    }
+    if (!matFile) {
+      setMatError('Please choose a file to upload.');
+      return;
+    }
+    const ext = (matFile.name.split('.').pop() || '').toLowerCase();
+    if (!ext) {
+      setMatError('The file needs an extension (e.g. .pdf, .mp3).');
+      return;
+    }
+    setMatUploading(true);
+    const safeName = sanitiseFileName(matFile.name) || `material.${ext}`;
+    const storagePath = `${matCategory}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage.from('materials').upload(storagePath, matFile);
+    if (uploadError) {
+      setMatError('Upload failed: ' + uploadError.message);
+      setMatUploading(false);
+      return;
+    }
+    const { error: insertError } = await supabase.from('materials').insert([{
+      title: matTitle.trim(),
+      category: matCategory,
+      file_name: matFile.name,
+      file_path: storagePath,
+      file_type: ext,
+      file_size: matFile.size,
+    }]);
+    setMatUploading(false);
+    if (insertError) {
+      setMatError('File uploaded, but saving the record failed: ' + insertError.message);
+      return;
+    }
+    setMatTitle('');
+    setMatFile(null);
+    setMatMsg('Uploaded successfully.');
+    fetchMaterials();
+  };
+
+  const handleMaterialDelete = async (item: any) => {
+    if (!isOnline()) {
+      alert('You are offline. Admin changes need internet.');
+      return;
+    }
+    if (!window.confirm(`Delete "${item.title}"? The file will be removed from storage.`)) return;
+    const { error: storageError } = await supabase.storage.from('materials').remove([item.file_path]);
+    if (storageError) {
+      alert('Failed to delete the file: ' + storageError.message);
+      return;
+    }
+    const { error } = await supabase.from('materials').delete().eq('id', item.id);
+    if (error) alert('Failed to delete item: ' + error.message);
+    else fetchMaterials();
+  };
+
+  // Open the edit modal for a material (title + category prefilled,
+  // file left empty — choosing a file replaces the stored one).
+  const openMaterialEdit = (item: any) => {
+    setEditMat(item);
+    setEditMatTitle(item.title || '');
+    setEditMatCategory((item.category || 'Poultry') as 'Poultry' | 'Cattle' | 'Fish');
+    setEditMatFile(null);
+    setEditMatError('');
+  };
+
+  // Save the edit. If a new file was chosen, upload it first, update the
+  // row with the new file details, then remove the old file from storage.
+  // If no new file, only the title and category change.
+  const handleMaterialEditSave = async () => {
+    if (!editMat) return;
+    setEditMatError('');
+    if (!isOnline()) {
+      setEditMatError('You are offline. Admin changes need internet.');
+      return;
+    }
+    if (editMatTitle.trim() === '') {
+      setEditMatError('Please enter a title for the material.');
+      return;
+    }
+    setEditMatSaving(true);
+    const updates: any = {
+      title: editMatTitle.trim(),
+      category: editMatCategory,
+    };
+    let newStoragePath: string | null = null;
+    if (editMatFile) {
+      const ext = (editMatFile.name.split('.').pop() || '').toLowerCase();
+      if (!ext) {
+        setEditMatError('The file needs an extension (e.g. .pdf, .mp3).');
+        setEditMatSaving(false);
+        return;
+      }
+      const safeName = sanitiseFileName(editMatFile.name) || `material.${ext}`;
+      newStoragePath = `${editMatCategory}/${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from('materials').upload(newStoragePath, editMatFile);
+      if (uploadError) {
+        setEditMatError('Upload failed: ' + uploadError.message);
+        setEditMatSaving(false);
+        return;
+      }
+      updates.file_name = editMatFile.name;
+      updates.file_path = newStoragePath;
+      updates.file_type = ext;
+      updates.file_size = editMatFile.size;
+    }
+    const { error: updateError } = await supabase.from('materials').update(updates).eq('id', editMat.id);
+    setEditMatSaving(false);
+    if (updateError) {
+      setEditMatError('Failed to save changes: ' + updateError.message);
+      return;
+    }
+    // The new file is live — remove the old one from storage.
+    if (newStoragePath && editMat.file_path && editMat.file_path !== newStoragePath) {
+      await supabase.storage.from('materials').remove([editMat.file_path]);
+    }
+    setEditMat(null);
+    setEditMatFile(null);
+    fetchMaterials();
+  };
+
   // Submit Handler for Cattle Feed
   const handleCattleFeedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -660,6 +853,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
       name: itemName,
       category: category,
       price: parseFloat(price) || 0,
+      bag_size_kg: cattleBagSize.trim() === '' || Number.isNaN(parseFloat(cattleBagSize)) ? null : parseFloat(cattleBagSize),
       dm: parseFloat(dm) || 0,
       cp: parseFloat(cp) || 0,
       me: parseFloat(me) || 0,
@@ -779,6 +973,70 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const layerBreeds = Array.from(
     new Set((genericRows['layer_std'] || []).map((r) => r.breed).filter(Boolean)),
   ) as string[];
+
+  // Alphabetical sort (client-side) so even a stale offline cache renders
+  // in name order. Returns a new array; never mutates the source rows.
+  const sortByName = (rows: any[], key: string) =>
+    [...rows].sort((a, b) => String(a[key] ?? '').localeCompare(String(b[key] ?? '')));
+
+  // Screenshot-sequence sort (client-side) so even a stale offline cache
+  // renders in sort_order. Rows with no sort_order go last, then by name.
+  const sortByOrder = (rows: any[], key: string) =>
+    [...rows].sort((a, b) => {
+      const ao = a.sort_order, bo = b.sort_order;
+      if (ao == null && bo == null) return String(a[key] ?? '').localeCompare(String(b[key] ?? ''));
+      if (ao == null) return 1;
+      if (bo == null) return -1;
+      if (ao !== bo) return ao - bo;
+      return String(a[key] ?? '').localeCompare(String(b[key] ?? ''));
+    });
+
+  // The four generic feed tabs are the only generic tabs sorted by
+  // sort_order (the screenshot sequence); standards / vaccinations keep
+  // their day / age order from the fetch.
+  const isFeedGenericTab = (key: string) =>
+    key === 'broiler_feeds' || key === 'layer_feeds' ||
+    key === 'floating_fish_feeds' || key === 'sinking_fish_feeds';
+
+  // Does a row match the search box (case-insensitive substring)?
+  const matchesSearch = (value: unknown) =>
+    searchTerm.trim() === '' ||
+    String(value ?? '').toLowerCase().includes(searchTerm.trim().toLowerCase());
+
+  // Sorted + searched rows for every tab (the active one renders below).
+  // Feed tables follow the screenshot sequence (sort_order); the other
+  // tables stay alphabetical by name.
+  const cattleRows = sortByOrder(cattleFeeds, 'name').filter((f) => matchesSearch(f.name));
+  const otherRows = sortByName(otherIngredients, 'name').filter((i) => matchesSearch(i.name));
+  const dmRows = sortByName(dmReferences, 'stage_name').filter((r) => matchesSearch(r.stage_name));
+  const breedRows = sortByName(breeds, 'name').filter((b) => matchesSearch(b.name));
+  const genericRowsSorted = activeGenericDef
+    ? (isFeedGenericTab(activeGenericDef.key)
+        ? sortByOrder(genericRows[activeGenericDef.key] || [], 'feed_name')
+        : (genericRows[activeGenericDef.key] || []))
+    : [];
+  const genericRowsVisible = activeGenericDef
+    ? genericRowsSorted.filter((row) => matchesSearch(row[activeGenericDef.fields[0].key]))
+    : [];
+
+  // Item count for the toolbar ("8 items" / "3 of 8 items" when searching).
+  const activeTotalCount = activeGenericDef
+    ? (genericRows[activeGenericDef.key] || []).length
+    : activeTab === 'cattle' ? cattleFeeds.length
+    : activeTab === 'other' ? otherIngredients.length
+    : activeTab === 'dm' ? dmReferences.length
+    : activeTab === 'materials' ? materials.length
+    : breeds.length;
+  const activeVisibleCount = activeGenericDef
+    ? genericRowsVisible.length
+    : activeTab === 'cattle' ? cattleRows.length
+    : activeTab === 'other' ? otherRows.length
+    : activeTab === 'dm' ? dmRows.length
+    : activeTab === 'materials' ? materials.length
+    : breedRows.length;
+  const countLabel = searchTerm.trim() === ''
+    ? `${activeTotalCount} items`
+    : `${activeVisibleCount} of ${activeTotalCount} items`;
 
   if (!isLoggedIn) {
     return (
@@ -937,12 +1195,13 @@ export default function AdminPage({ onBack }: AdminPageProps) {
           { key: 'dm', label: 'DM Ratio', icon: <BookOpen size={13} /> },
           { key: 'breeds', label: 'Breeds', icon: <Dna size={13} /> },
           ...GENERIC_TABLES.filter((t) => t.key !== 'broiler_feeds' && t.key !== 'layer_feeds' && t.key !== 'floating_fish_feeds' && t.key !== 'sinking_fish_feeds').map((t) => ({ key: t.key, label: t.label, icon: <Table2 size={13} /> })),
+          { key: 'materials', label: 'Materials', icon: <BookOpen size={13} /> },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => handleTabChange(tab.key)}
             className={`py-2 px-3 rounded-lg font-bold flex items-center justify-center space-x-1 transition shrink-0 whitespace-nowrap ${
-              activeTab === tab.key ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              activeTab === tab.key ? 'bg-emerald-800 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             {tab.icon}
@@ -959,37 +1218,61 @@ export default function AdminPage({ onBack }: AdminPageProps) {
       ) : (
         <div className="space-y-4">
           
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-bold text-slate-700 text-xs">
               {activeTab === 'cattle' && 'Cattle Feed Table'}
               {activeTab === 'other' && 'Other Ingredients Table'}
               {activeTab === 'dm' && 'DM Reference Entries'}
               {activeTab === 'breeds' && 'Cattle Breeds Table'}
+              {activeTab === 'materials' && 'Training Materials'}
               {activeGenericDef && `${activeGenericDef.label} Table`}
             </span>
-            <button
-              onClick={() => {
-                if (activeGenericDef) {
-                  if (genericShowForm) resetGenericForm();
-                  else setGenericShowForm(true);
-                } else if (showForm) resetForm();
-                else setShowForm(true);
-              }}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg font-bold transition shadow-2xs ${
-                formOpen 
-                  ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' 
-                  : 'bg-emerald-800 text-white hover:bg-emerald-900'
-              }`}
-            >
-              {formOpen ? <X size={14} /> : <Plus size={14} />}
-              <span>{formOpen ? 'Cancel' : 'Add New Item'}</span>
-            </button>
+            <span className="text-[11px] text-slate-400 font-medium">{countLabel}</span>
+            <span className="flex-1" />
+            {/* The Materials tab has its own upload card + list, so the
+                generic search box and Add New button are hidden there. */}
+            {activeTab !== 'materials' && (
+              <>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by name..."
+                  className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs w-40 sm:w-52 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-700"
+                />
+                <button
+                  onClick={() => {
+                    if (activeGenericDef) {
+                      if (genericShowForm) resetGenericForm();
+                      else setGenericShowForm(true);
+                    } else if (showForm) resetForm();
+                    else setShowForm(true);
+                  }}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg font-bold transition shadow-2xs ${
+                    formOpen 
+                      ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' 
+                      : 'bg-emerald-800 text-white hover:bg-emerald-900'
+                  }`}
+                >
+                  {formOpen ? <X size={14} /> : <Plus size={14} />}
+                  <span>{formOpen ? 'Cancel' : 'Add New Item'}</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* TAB 1: NOURISH FEEDS */}
           {activeTab === 'cattle' && (
             <div className="space-y-4">
               {showForm && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                  onClick={resetForm}
+                >
+                  <div
+                    className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                 <form onSubmit={handleCattleFeedSubmit} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center border-b pb-2 font-bold text-emerald-800">
                     <span>{editId ? 'Edit Cattle Feed' : 'Add New Cattle Feed'}</span>
@@ -1022,6 +1305,10 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     <div className="col-span-2 sm:col-span-1">
                       <label className="text-[10px] text-slate-500">ME Energy</label>
                       <input type="number" step="0.01" required value={me} onChange={(e) => setMe(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500">Bag Size (kg)</label>
+                      <input type="number" step="0.01" placeholder="e.g. 25" value={cattleBagSize} onChange={(e) => setCattleBagSize(e.target.value)} className="w-full border p-1.5 rounded-lg" />
                     </div>
                     {/* Nutrients (from the product table) — number or a
                         range like "65-70", without the % sign. */}
@@ -1122,15 +1409,18 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     <span>{uploadingImage ? 'Resizing photo...' : editId ? 'Update Cattle Feed' : 'Save Cattle Feed'}</span>
                   </button>
                 </form>
+                  </div>
+                </div>
               )}
 
-              <div className="bg-white rounded-xl border overflow-x-auto">
-                <table className="w-full text-left">
+              <div className="bg-white rounded-xl border overflow-auto max-h-[70vh]">
+                <table className="w-full text-left [&_th]:sticky [&_th]:top-0 [&_th]:bg-slate-100 [&_th]:z-10">
                   <thead className="bg-slate-100 font-bold border-b text-[11px] uppercase text-slate-600">
                     <tr>
                       <th className="p-2.5">Name</th>
                       <th className="p-2.5">Category</th>
                       <th className="p-2.5 text-center">Price</th>
+                      <th className="p-2.5 text-center">Bag (kg)</th>
                       <th className="p-2.5 text-center">DM %</th>
                       <th className="p-2.5 text-center">CP %</th>
                       <th className="p-2.5 text-center">ME</th>
@@ -1145,11 +1435,19 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y text-slate-700">
-                    {cattleFeeds.map((feed) => (
-                      <tr key={feed.id} className="hover:bg-slate-50">
+                    {cattleRows.length === 0 && (
+                      <tr>
+                        <td colSpan={15} className="p-4 text-center text-slate-400 font-medium">
+                          No items found.
+                        </td>
+                      </tr>
+                    )}
+                    {cattleRows.map((feed, idx) => (
+                      <tr key={feed.id} className={idx % 2 === 0 ? 'bg-slate-50/50 hover:bg-slate-100' : 'hover:bg-slate-100'}>
                         <td className="p-2.5 font-bold">{feed.name}</td>
                         <td className="p-2.5 text-[10px] text-slate-500 capitalize">{feed.category}</td>
                         <td className="p-2.5 text-center font-bold text-emerald-700">৳{feed.price ?? 0}</td>
+                        <td className="p-2.5 text-center">{feed.bag_size_kg ?? '-'}</td>
                         <td className="p-2.5 text-center">{feed.dm ?? 0}%</td>
                         <td className="p-2.5 text-center">{feed.cp ?? 0}%</td>
                         <td className="p-2.5 text-center">{feed.me ?? 0}</td>
@@ -1173,9 +1471,9 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                             )}
                           </span>
                         </td>
-                        <td className="p-2.5 text-center space-x-1">
-                          <button onClick={() => startCattleFeedEdit(feed)} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
-                          <button onClick={() => handleDelete('cattle_feeds', feed.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
+                        <td className="p-2.5 text-center whitespace-nowrap space-x-1.5">
+                          <button onClick={() => startCattleFeedEdit(feed)} className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white hover:bg-emerald-800 transition"><Edit3 size={12} /> Edit</button>
+                          <button onClick={() => handleDelete('cattle_feeds', feed.id)} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1 text-xs font-bold text-white hover:bg-rose-700 transition"><Trash2 size={12} /> Delete</button>
                         </td>
                       </tr>
                     ))}
@@ -1189,6 +1487,14 @@ export default function AdminPage({ onBack }: AdminPageProps) {
           {activeTab === 'other' && (
             <div className="space-y-4">
               {showForm && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                  onClick={resetForm}
+                >
+                  <div
+                    className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                 <form onSubmit={handleOtherIngredientsSubmit} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center border-b pb-2 font-bold text-emerald-800">
                     <span>{editId ? 'Edit Other Ingredient' : 'Add New Other Ingredient'}</span>
@@ -1228,10 +1534,12 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     <span>{editId ? 'Update Ingredient' : 'Save Ingredient'}</span>
                   </button>
                 </form>
+                  </div>
+                </div>
               )}
 
-              <div className="bg-white rounded-xl border overflow-x-auto">
-                <table className="w-full text-left">
+              <div className="bg-white rounded-xl border overflow-auto max-h-[70vh]">
+                <table className="w-full text-left [&_th]:sticky [&_th]:top-0 [&_th]:bg-slate-100 [&_th]:z-10">
                   <thead className="bg-slate-100 font-bold border-b text-[11px] uppercase text-slate-600">
                     <tr>
                       <th className="p-2.5">Name</th>
@@ -1244,8 +1552,15 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y text-slate-700">
-                    {otherIngredients.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50">
+                    {otherRows.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-4 text-center text-slate-400 font-medium">
+                          No ingredients found.
+                        </td>
+                      </tr>
+                    )}
+                    {otherRows.map((item, idx) => (
+                      <tr key={item.id} className={idx % 2 === 0 ? 'bg-slate-50/50 hover:bg-slate-100' : 'hover:bg-slate-100'}>
                         <td className="p-2.5 font-bold">{item.name}</td>
                         <td className="p-2.5 text-center capitalize">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.feed_type === 'fodder' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
@@ -1256,7 +1571,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                         <td className="p-2.5 text-center">{item.dm_percent ?? item.dm ?? 0}%</td>
                         <td className="p-2.5 text-center">{item.cp_percent ?? item.cp ?? 0}%</td>
                         <td className="p-2.5 text-center">{item.me_energy ?? item.me ?? 0}</td>
-                        <td className="p-2.5 text-center space-x-1">
+                        <td className="p-2.5 text-center whitespace-nowrap space-x-1.5">
                           <button onClick={() => { 
                             setEditId(item.id); 
                             setItemName(item.name || ''); 
@@ -1266,8 +1581,8 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                             setMe(item.me_energy ?? item.me ?? ''); 
                             setFeedType(item.feed_type || 'concentrate');
                             setShowForm(true); 
-                          }} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
-                          <button onClick={() => handleDelete('other_ingredients', item.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
+                          }} className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white hover:bg-emerald-800 transition"><Edit3 size={12} /> Edit</button>
+                          <button onClick={() => handleDelete('other_ingredients', item.id)} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1 text-xs font-bold text-white hover:bg-rose-700 transition"><Trash2 size={12} /> Delete</button>
                         </td>
                       </tr>
                     ))}
@@ -1281,6 +1596,14 @@ export default function AdminPage({ onBack }: AdminPageProps) {
           {activeTab === 'dm' && (
             <div className="space-y-4">
               {showForm && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                  onClick={resetForm}
+                >
+                  <div
+                    className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                 <form onSubmit={handleDmSubmit} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center border-b pb-2 font-bold text-emerald-800">
                     <span>{editId ? 'Edit DM Reference' : 'Add New DM Reference'}</span>
@@ -1313,10 +1636,12 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     <span>{editId ? 'Update DM Reference' : 'Save DM Reference'}</span>
                   </button>
                 </form>
+                  </div>
+                </div>
               )}
 
-              <div className="bg-white rounded-xl border overflow-hidden">
-                <table className="w-full text-left">
+              <div className="bg-white rounded-xl border overflow-auto max-h-[70vh]">
+                <table className="w-full text-left [&_th]:sticky [&_th]:top-0 [&_th]:bg-slate-100 [&_th]:z-10">
                   <thead className="bg-slate-100 font-bold border-b text-[11px] uppercase text-slate-600">
                     <tr>
                       <th className="p-2.5">Stage</th>
@@ -1326,14 +1651,21 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y text-slate-700">
-                    {dmReferences.map((ref) => (
-                      <tr key={ref.id} className="hover:bg-slate-50">
+                    {dmRows.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="p-4 text-center text-slate-400 font-medium">
+                          No entries found.
+                        </td>
+                      </tr>
+                    )}
+                    {dmRows.map((ref, idx) => (
+                      <tr key={ref.id} className={idx % 2 === 0 ? 'bg-slate-50/50 hover:bg-slate-100' : 'hover:bg-slate-100'}>
                         <td className="p-2.5 font-bold">{ref.stage_name}</td>
                         <td className="p-2.5 text-[10px] text-slate-500 capitalize">{ref.target_group}</td>
                         <td className="p-2.5 text-center font-bold text-emerald-800">{ref.concentrate_ratio} : {ref.fodder_ratio}</td>
-                        <td className="p-2.5 text-center space-x-1">
-                          <button onClick={() => { setEditId(ref.id); setStageName(ref.stage_name); setTargetGroup(ref.target_group); setConcentrateRatio(ref.concentrate_ratio); setFodderRatio(ref.fodder_ratio); setShowForm(true); }} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
-                          <button onClick={() => handleDelete('dm_references', ref.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
+                        <td className="p-2.5 text-center whitespace-nowrap space-x-1.5">
+                          <button onClick={() => { setEditId(ref.id); setStageName(ref.stage_name); setTargetGroup(ref.target_group); setConcentrateRatio(ref.concentrate_ratio); setFodderRatio(ref.fodder_ratio); setShowForm(true); }} className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white hover:bg-emerald-800 transition"><Edit3 size={12} /> Edit</button>
+                          <button onClick={() => handleDelete('dm_references', ref.id)} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1 text-xs font-bold text-white hover:bg-rose-700 transition"><Trash2 size={12} /> Delete</button>
                         </td>
                       </tr>
                     ))}
@@ -1347,6 +1679,14 @@ export default function AdminPage({ onBack }: AdminPageProps) {
           {activeTab === 'breeds' && (
             <div className="space-y-4">
               {showForm && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                  onClick={resetForm}
+                >
+                  <div
+                    className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                 <form onSubmit={handleBreedSubmit} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center border-b pb-2 font-bold text-emerald-800">
                     <span>{editId ? 'Edit Cattle Breed' : 'Add New Cattle Breed'}</span>
@@ -1381,10 +1721,12 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     <span>{editId ? 'Update Breed' : 'Save Breed'}</span>
                   </button>
                 </form>
+                  </div>
+                </div>
               )}
 
-              <div className="bg-white rounded-xl border overflow-hidden">
-                <table className="w-full text-left">
+              <div className="bg-white rounded-xl border overflow-auto max-h-[70vh]">
+                <table className="w-full text-left [&_th]:sticky [&_th]:top-0 [&_th]:bg-slate-100 [&_th]:z-10">
                   <thead className="bg-slate-100 font-bold border-b text-[11px] uppercase text-slate-600">
                     <tr>
                       <th className="p-2.5">Breed Name</th>
@@ -1393,29 +1735,29 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y text-slate-700">
-                    {breeds.length === 0 ? (
+                    {breedRows.length === 0 ? (
                       <tr>
                         <td colSpan={3} className="p-4 text-center text-slate-400 font-medium">
                           No breeds found.
                         </td>
                       </tr>
                     ) : (
-                      breeds.map((breed) => (
-                        <tr key={breed.id} className="hover:bg-slate-50">
+                      breedRows.map((breed, idx) => (
+                        <tr key={breed.id} className={idx % 2 === 0 ? 'bg-slate-50/50 hover:bg-slate-100' : 'hover:bg-slate-100'}>
                           <td className="p-2.5 font-bold">{breed.name}</td>
                           <td className="p-2.5 text-center capitalize">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${breed.category === 'dairy' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                               {breed.category}
                             </span>
                           </td>
-                          <td className="p-2.5 text-center space-x-1">
+                          <td className="p-2.5 text-center whitespace-nowrap space-x-1.5">
                             <button onClick={() => { 
                               setEditId(breed.id); 
                               setBreedName(breed.name || ''); 
                               setBreedCategory(breed.category || 'dairy');
                               setShowForm(true); 
-                            }} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
-                            <button onClick={() => handleDelete('breeds', breed.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
+                            }} className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white hover:bg-emerald-800 transition"><Edit3 size={12} /> Edit</button>
+                            <button onClick={() => handleDelete('breeds', breed.id)} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1 text-xs font-bold text-white hover:bg-rose-700 transition"><Trash2 size={12} /> Delete</button>
                           </td>
                         </tr>
                       ))
@@ -1430,6 +1772,14 @@ export default function AdminPage({ onBack }: AdminPageProps) {
           {activeGenericDef && (
             <div className="space-y-4">
               {genericShowForm && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                  onClick={resetGenericForm}
+                >
+                  <div
+                    className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                 <form onSubmit={handleGenericSubmit} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center border-b pb-2 font-bold text-emerald-800">
                     <span>{genericEditId ? `Edit ${activeGenericDef.label}` : `Add New ${activeGenericDef.label}`}</span>
@@ -1523,10 +1873,12 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     <span>{uploadingImage ? 'Resizing photo...' : genericEditId ? `Update ${activeGenericDef.label}` : `Save ${activeGenericDef.label}`}</span>
                   </button>
                 </form>
+                  </div>
+                </div>
               )}
 
-              <div className="bg-white rounded-xl border overflow-x-auto">
-                <table className="w-full text-left">
+              <div className="bg-white rounded-xl border overflow-auto max-h-[70vh]">
+                <table className="w-full text-left [&_th]:sticky [&_th]:top-0 [&_th]:bg-slate-100 [&_th]:z-10">
                   <thead className="bg-slate-100 font-bold border-b text-[11px] uppercase text-slate-600">
                     <tr>
                       {activeGenericDef.fields.map((f) => (
@@ -1536,15 +1888,15 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y text-slate-700">
-                    {(genericRows[activeGenericDef.key] || []).length === 0 ? (
+                    {genericRowsVisible.length === 0 ? (
                       <tr>
                         <td colSpan={activeGenericDef.fields.length + 1} className="p-4 text-center text-slate-400 font-medium">
                           No entries found.
                         </td>
                       </tr>
                     ) : (
-                      (genericRows[activeGenericDef.key] || []).map((row) => (
-                        <tr key={row.id} className="hover:bg-slate-50">
+                      genericRowsVisible.map((row, idx) => (
+                        <tr key={row.id} className={idx % 2 === 0 ? 'bg-slate-50/50 hover:bg-slate-100' : 'hover:bg-slate-100'}>
                           {activeGenericDef.fields.map((f, i) => (
                             <td key={f.key} className={`p-2.5 whitespace-nowrap ${i === 0 ? 'font-bold' : 'text-center'}`}>
                               {f.type === 'image' ? (
@@ -1560,15 +1912,205 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                               )}
                             </td>
                           ))}
-                          <td className="p-2.5 text-center space-x-1 whitespace-nowrap">
-                            <button onClick={() => startGenericEdit(activeGenericDef, row)} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
-                            <button onClick={() => handleDelete(activeGenericDef.table, row.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
+                          <td className="p-2.5 text-center whitespace-nowrap space-x-1.5">
+                            <button onClick={() => startGenericEdit(activeGenericDef, row)} className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white hover:bg-emerald-800 transition"><Edit3 size={12} /> Edit</button>
+                            <button onClick={() => handleDelete(activeGenericDef.table, row.id)} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1 text-xs font-bold text-white hover:bg-rose-700 transition"><Trash2 size={12} /> Delete</button>
                           </td>
                         </tr>
                       ))
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* MATERIALS TAB: upload + list (custom — not the generic editor) */}
+          {activeTab === 'materials' && (
+            <div className="space-y-4">
+              {/* Upload card */}
+              <div className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
+                <div className="font-bold text-emerald-800 border-b pb-2">Upload Training Material</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] text-slate-500">Title</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Broiler Feeding Guide"
+                      value={matTitle}
+                      onChange={(e) => setMatTitle(e.target.value)}
+                      className="w-full border p-1.5 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500">Category</label>
+                    <select
+                      value={matCategory}
+                      onChange={(e) => setMatCategory(e.target.value as 'Poultry' | 'Cattle' | 'Fish')}
+                      className="w-full border p-1.5 rounded-lg bg-white"
+                    >
+                      <option value="Poultry">Poultry</option>
+                      <option value="Cattle">Cattle</option>
+                      <option value="Fish">Fish</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500">File (PDF, PPTX, DOCX, audio, video, any file)</label>
+                  <label className="flex items-center gap-2 border rounded-lg p-2 cursor-pointer hover:bg-slate-50">
+                    <span className="shrink-0 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1.5 rounded-lg">Choose file</span>
+                    <span className="text-xs text-slate-600 truncate">
+                      {matFile ? `${matFile.name} (${formatMatFileSize(matFile.size)})` : 'No file chosen'}
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        setMatFile(e.target.files?.[0] || null);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+                {matError && <p className="text-xs font-semibold text-rose-600">{matError}</p>}
+                {matMsg && <p className="text-xs font-semibold text-emerald-700">{matMsg}</p>}
+                <button
+                  onClick={handleMaterialUpload}
+                  disabled={matUploading}
+                  className="flex items-center gap-1.5 bg-emerald-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-900 transition disabled:opacity-60"
+                >
+                  {matUploading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                  <span>{matUploading ? 'Uploading...' : 'Upload Material'}</span>
+                </button>
+              </div>
+
+              {/* Existing materials */}
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-3 py-2.5 border-b font-bold text-slate-700 text-xs">
+                  Uploaded Materials ({materials.length})
+                </div>
+                {materialsLoading ? (
+                  <div className="p-6 flex justify-center items-center text-emerald-800 space-x-2">
+                    <Loader2 className="animate-spin" size={18} />
+                    <span className="text-xs font-medium">Loading materials...</span>
+                  </div>
+                ) : materials.length === 0 ? (
+                  <p className="p-4 text-center text-xs text-slate-400">No materials uploaded yet.</p>
+                ) : (
+                  <ul className="divide-y divide-slate-100">
+                    {materials.map((m) => (
+                      <li key={m.id} className="p-3 flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 leading-snug break-words">{m.title}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-bold ${matCategoryBadge(m.category)}`}>
+                              {m.category}
+                            </span>
+                            <span className="text-slate-500 break-all">{m.file_name}</span>
+                            <span className="text-slate-400">{formatMatFileSize(m.file_size)}</span>
+                            <span className="text-slate-400">
+                              {m.created_at ? new Date(m.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex flex-col gap-1.5">
+                          <button
+                            onClick={() => openMaterialEdit(m)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white hover:bg-emerald-800 transition"
+                          >
+                            <Edit3 size={12} /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleMaterialDelete(m)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1 text-xs font-bold text-white hover:bg-rose-700 transition"
+                          >
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Edit Material modal — title + category, and optionally replace the file */}
+          {editMat && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+              onClick={() => { if (!editMatSaving) setEditMat(null); }}
+            >
+              <div
+                className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-sm">Edit Material</span>
+                  <button
+                    onClick={() => { if (!editMatSaving) setEditMat(null); }}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500">Title</label>
+                  <input
+                    type="text"
+                    value={editMatTitle}
+                    onChange={(e) => setEditMatTitle(e.target.value)}
+                    className="w-full border rounded-lg p-2 text-xs"
+                    placeholder="Material title"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500">Category</label>
+                  <select
+                    value={editMatCategory}
+                    onChange={(e) => setEditMatCategory(e.target.value as 'Poultry' | 'Cattle' | 'Fish')}
+                    className="w-full border rounded-lg p-2 text-xs bg-white"
+                  >
+                    <option value="Poultry">Poultry</option>
+                    <option value="Cattle">Cattle</option>
+                    <option value="Fish">Fish</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500">Replace file (optional — leave empty to keep the current file)</label>
+                  <label className="flex items-center gap-2 border rounded-lg p-2 cursor-pointer hover:bg-slate-50">
+                    <span className="shrink-0 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1.5 rounded-lg">Choose file</span>
+                    <span className="text-xs text-slate-600 truncate">
+                      {editMatFile ? `${editMatFile.name} (${formatMatFileSize(editMatFile.size)})` : `Current file: ${editMat.file_name}`}
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        setEditMatFile(e.target.files?.[0] || null);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+                {editMatError && <p className="text-xs font-semibold text-rose-600">{editMatError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleMaterialEditSave}
+                    disabled={editMatSaving}
+                    className="flex items-center gap-1.5 bg-emerald-800 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-emerald-900 transition disabled:opacity-60"
+                  >
+                    {editMatSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    <span>{editMatSaving ? 'Saving...' : 'Save Changes'}</span>
+                  </button>
+                  <button
+                    onClick={() => { if (!editMatSaving) setEditMat(null); }}
+                    disabled={editMatSaving}
+                    className="px-3 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}

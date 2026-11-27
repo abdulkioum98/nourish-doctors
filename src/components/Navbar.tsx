@@ -107,11 +107,19 @@ export default function Navbar({ onOpenSidebar, onGoHome, onGoBack, currentPage 
         {/* Brand Logo & Dynamic Page Title — never wraps: the title
             truncates with an ellipsis instead of breaking to a second line */}
         <div className="flex items-center space-x-2 select-none min-w-0 flex-1">
-          <img 
-            src="/nourish.png" 
-            alt="Nourish Logo" 
-            className="h-7 w-auto object-contain bg-white/90 p-0.5 rounded-md shadow-xs shrink-0"
-          />
+          {/* Logo — clickable: takes you to the Home page */}
+          <button
+            onClick={onGoHome}
+            className="shrink-0 rounded-md focus:outline-none hover:opacity-90 active:scale-95 transition"
+            title="Home"
+            aria-label="Go to Home"
+          >
+            <img
+              src="/nourish.png"
+              alt="Nourish Logo"
+              className="h-7 w-auto object-contain bg-white/90 p-0.5 rounded-md shadow-xs block"
+            />
+          </button>
           <h1 className="text-base sm:text-lg font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis min-w-0">
             {pageTitle}
           </h1>

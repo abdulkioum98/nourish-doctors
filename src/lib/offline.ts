@@ -186,6 +186,7 @@ export const REFERENCE_KEYS = [
   'layer_feeds:all',
   'floating_fish_feeds:all',
   'sinking_fish_feeds:all',
+  'materials:all',
   'allowed_emails:all',
 ] as const;
 
@@ -276,6 +277,11 @@ async function fetchReference(key: string): Promise<unknown> {
     }
     case 'sinking_fish_feeds:all': {
       const { data, error } = await supabase.from('sinking_fish_feeds').select('*').order('id', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+    case 'materials:all': {
+      const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     }

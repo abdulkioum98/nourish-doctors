@@ -16,6 +16,7 @@ export interface SinkingFishFeedItem {
   feed_size?: string;
   bag_size_kg?: number;
   price?: number;
+  sort_order?: number;
   bag_image_url?: string;
   sample_image_url?: string;
 }
@@ -40,7 +41,7 @@ export default function NourishSinkingFishFeeds({ onBack }: NourishSinkingFishFe
         const { data, error } = await supabase
           .from('sinking_fish_feeds')
           .select('*')
-          .order('id', { ascending: true });
+          .order('sort_order', { ascending: true });
         if (error) {
           console.error('Error fetching sinking fish feeds:', error);
           return [];
@@ -69,6 +70,15 @@ export default function NourishSinkingFishFeeds({ onBack }: NourishSinkingFishFe
   const hasPrice = (feed: SinkingFishFeedItem) =>
     feed.price != null && Number(feed.price) > 0;
 
+  // Screenshot sequence: sort_order ascending, rows without one last,
+  // so even a stale offline cache lists in the screenshot order.
+  const sortedVisibleFeeds = [...visibleFeeds].sort((a, b) => {
+    if (a.sort_order == null && b.sort_order == null) return 0;
+    if (a.sort_order == null) return 1;
+    if (b.sort_order == null) return -1;
+    return a.sort_order - b.sort_order;
+  });
+
   return (
     <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
       {/* Header */}
@@ -86,72 +96,45 @@ export default function NourishSinkingFishFeeds({ onBack }: NourishSinkingFishFe
         </button>
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex bg-gray-100 p-1 rounded-lg text-xs font-bold">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`flex-1 py-1.5 rounded-md transition ${
-            activeTab === 'all' ? 'bg-cyan-700 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          All Feeds ({feeds.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('common')}
-          className={`flex-1 py-1.5 rounded-md transition ${
-            activeTab === 'common' ? 'bg-cyan-700 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Common
-        </button>
-        <button
-          onClick={() => setActiveTab('pangas')}
-          className={`flex-1 py-1.5 rounded-md transition ${
-            activeTab === 'pangas' ? 'bg-cyan-700 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Pangas
-        </button>
-        <button
-          onClick={() => setActiveTab('tilapia')}
-          className={`flex-1 py-1.5 rounded-md transition ${
-            activeTab === 'tilapia' ? 'bg-cyan-700 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Tilapia
-        </button>
-        <button
-          onClick={() => setActiveTab('catfish')}
-          className={`flex-1 py-1.5 rounded-md transition ${
-            activeTab === 'catfish' ? 'bg-cyan-700 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Catfish
-        </button>
-        <button
-          onClick={() => setActiveTab('carp')}
-          className={`flex-1 py-1.5 rounded-md transition ${
-            activeTab === 'carp' ? 'bg-cyan-700 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Carp
-        </button>
-        <button
-          onClick={() => setActiveTab('golda')}
-          className={`flex-1 py-1.5 rounded-md transition ${
-            activeTab === 'golda' ? 'bg-cyan-700 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Golda
-        </button>
-        <button
-          onClick={() => setActiveTab('bagda')}
-          className={`flex-1 py-1.5 rounded-md transition ${
-            activeTab === 'bagda' ? 'bg-cyan-700 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Bagda
-        </button>
+      {/* Category filter — individual cards (label + item count) */}
+      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 sm:gap-2">
+        {(
+          [
+            { key: 'all', label: 'All Feeds' },
+            { key: 'common', label: 'Common' },
+            { key: 'pangas', label: 'Pangas' },
+            { key: 'tilapia', label: 'Tilapia' },
+            { key: 'catfish', label: 'Catfish' },
+            { key: 'carp', label: 'Carp' },
+            { key: 'golda', label: 'Golda' },
+            { key: 'bagda', label: 'Bagda' },
+          ] as const
+        ).map((c) => {
+          const count =
+            c.key === 'all'
+              ? feeds.length
+              : feeds.filter((f) => {
+                  const cat = (f.category || '').toLowerCase();
+                  return !cat || cat === c.key;
+                }).length;
+          const isActive = activeTab === c.key;
+          return (
+            <button
+              key={c.key}
+              onClick={() => setActiveTab(c.key)}
+              className={`rounded-xl px-1 py-1.5 sm:py-2 text-center transition border ${
+                isActive
+                  ? 'bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-700 text-white shadow-md scale-[1.03]'
+                  : 'bg-cyan-50 border-cyan-200 text-cyan-800 hover:bg-cyan-100'
+              }`}
+            >
+              <span className="block text-[11px] sm:text-xs font-bold leading-tight">{c.label}</span>
+              <span className={`block text-[9px] sm:text-[10px] leading-tight ${isActive ? 'text-cyan-100' : 'text-cyan-600/70'}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Feed cards */}
@@ -165,7 +148,7 @@ export default function NourishSinkingFishFeeds({ onBack }: NourishSinkingFishFe
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleFeeds.map((feed) => {
+            {sortedVisibleFeeds.map((feed) => {
               // Bag + sample photos from the database row (admin-uploaded;
               // no static fallback for fish feeds).
               const bagImage = hasFeedImage(feed.bag_image_url)
@@ -208,15 +191,24 @@ export default function NourishSinkingFishFeeds({ onBack }: NourishSinkingFishFe
                     ) : null}
                   </div>
                   <div className="p-4 flex flex-col gap-3 flex-1">
-                    {/* Name with the price beside it (like Floating / Cattle / Poultry) */}
+                    {/* Name with the per-kg price beside it (like Floating / Cattle / Poultry),
+                        and the bag price for the row's standard bag size just below it */}
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="text-base font-bold text-cyan-800 leading-tight">
                         {feed.feed_name}
                       </h4>
                       {hasPrice(feed) && (
-                        <span className="text-base font-bold text-cyan-700 whitespace-nowrap shrink-0">
-                          ৳{Number(feed.price).toFixed(2)}
-                        </span>
+                        <div className="flex flex-col items-end gap-0.5 shrink-0">
+                          <span className="text-base font-bold text-cyan-700 whitespace-nowrap">
+                            ৳{Number(feed.price).toFixed(2)}
+                            <span className="text-xs text-slate-400 font-semibold">/kg</span>
+                          </span>
+                          {feed.bag_size_kg != null && (
+                            <span className="text-xs text-slate-500 whitespace-nowrap">
+                              Bag size: {feed.bag_size_kg} kg : ৳{(Number(feed.price) * feed.bag_size_kg).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                     {/* Focused boxes: Protein / Fat / Fiber */}

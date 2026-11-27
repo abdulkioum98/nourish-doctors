@@ -54,6 +54,9 @@ import NourishFloatingFishFeeds from './pages/fish/NourishFloatingFishFeeds';
 import NourishSinkingFishFeeds from './pages/fish/NourishSinkingFishFeeds';
 import AquaGuidePage from './pages/fish/AquaGuidePage';
 
+// Training Materials (PDF / PPTX library)
+import TrainingMaterialsPage from './pages/materials/TrainingMaterialsPage';
+
 import AdminPage from './pages/admin/AdminPage';
 import { Loader2 } from 'lucide-react';
 import { App as CapApp } from '@capacitor/app';
@@ -122,6 +125,7 @@ export type PageType =
   | 'dm-reference'
   | 'dm-ratio-reference'
   | 'breed-reference'
+  | 'materials'
   | 'admin'
   | 'user-info';
 
@@ -514,7 +518,7 @@ export default function App() {
 
       {renderSidebar()}
 
-      <main className={`p-3 sm:p-5 mx-auto transition-all duration-300 ${
+      <main className={`px-2 py-3 sm:p-5 mx-auto transition-all duration-300 ${
         isFormPage ? 'max-w-4xl' : 'w-full'
       }`}>
 
@@ -697,6 +701,11 @@ export default function App() {
 
         {currentPage === 'aqua-pond-prep' && (
           <AquaGuidePage topic="pond-prep" onBack={handleGoHome} />
+        )}
+
+        {/* --- TRAINING MATERIALS --- */}
+        {currentPage === 'materials' && (
+          <TrainingMaterialsPage onBack={handleGoHome} />
         )}
 
         {currentPage === 'weight-guide' && (

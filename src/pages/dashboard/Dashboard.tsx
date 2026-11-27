@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Award,
   BookOpen,
+  BookOpenText,
   ShieldPlus,
 } from 'lucide-react';
 
@@ -30,7 +31,7 @@ interface DashboardProps {
 // Clean 3D tile tints — same light colours, much calmer:
 // plain light background (no gradient), thin border, one soft coloured
 // shadow + a light bottom edge for the lift. No glow, no extra badges.
-type TintKey = 'emerald' | 'amber' | 'cyan';
+type TintKey = 'emerald' | 'amber' | 'cyan' | 'violet';
 
 const TINTS: Record<
   TintKey,
@@ -73,6 +74,16 @@ const TINTS: Record<
     chevron: 'text-cyan-500',
     subHover: 'hover:bg-cyan-100 hover:text-cyan-900',
     subIcon: 'text-cyan-600',
+  },
+  violet: {
+    tile:
+      'bg-violet-50 border border-violet-200/70 border-b-[3px] border-b-violet-200 shadow-[0_4px_10px_-8px_rgba(139,92,246,0.35)]',
+    iconBox: 'bg-white border border-violet-100',
+    iconHover: 'group-hover:bg-violet-100',
+    title: 'text-violet-950',
+    chevron: 'text-violet-500',
+    subHover: 'hover:bg-violet-100 hover:text-violet-900',
+    subIcon: 'text-violet-600',
   },
 };
 
@@ -135,6 +146,11 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     { id: 'aqua-water-quality', title: 'Water Quality' },
     { id: 'aqua-nursery-feeding', title: 'Nursery Feeding' },
     { id: 'aqua-pond-prep', title: 'Pond Preparation' },
+  ];
+
+  // Materials (Training Materials — PDF / PPTX library)
+  const materialsServices: CardItem[] = [
+    { id: 'materials', title: 'Training Materials', icon: <BookOpenText className="text-violet-700" size={18} /> },
   ];
 
   // One clean 3D card — short again (like the earlier cards) and bleeding
@@ -273,6 +289,14 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
           <div className="flex flex-col gap-4">
             {renderAccordion('fish', 'Nourish Fish Feeds', <Fish className="text-cyan-700" size={18} />, 'cyan', fishSubItems, 'left')}
             {renderAccordion('aqua-guide', 'Fish Farming Guide', <Fish className="text-cyan-700" size={18} />, 'cyan', aquaGuideSubItems, 'left')}
+          </div>
+        </section>
+
+        {/* ৪. MATERIALS SECTION — card comes in from outside the screen on the right */}
+        <section className="space-y-4">
+          {sectionHeading('bg-violet-600', 'Materials', 'text-violet-900')}
+          <div className="flex flex-col gap-4">
+            {materialsServices.map((item) => renderCard(item, 'violet', 'right'))}
           </div>
         </section>
       </div>
