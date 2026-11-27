@@ -1,17 +1,31 @@
 // Ration suggestion popup, shared by the Dairy and Fattening calculators.
 //
-// The user picks which ingredients they actually have (multi-select with
-// checkboxes, grouped Concentrate / Fodder). The suggestion is recalculated
-// live from the animal's targets, and Apply puts the suggested quantities
-// straight into the calculator table — the calculation then shows exactly
-// as before, only with the suggested numbers in it.
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Lightbulb, X } from 'lucide-react';
+// Two ways to suggest:
+//   - Auto Suggestion: the solver builds the ration from the MUST-USE
+//     feeds — the Nourish feed for this animal's milk yield (dairy) or
+//     daily weight gain (fattening), plus Bhushi Mix, plus Green Grass
+//     and Straw or Silage — then 1-3 other ingredients, cheapest first.
+//     The yield feed is the main concentrate. A Change button steps
+//     through the combinations: the must-use feeds stay fixed, only
+//     the other ingredients change, so each tap gives a different ration.
+//   - Select Ingredients: the user picks which ingredients they actually
+//     have (multi-select with checkboxes, grouped Concentrate / Fodder),
+//     and every selected ingredient is used.
+// The suggestion is recalculated live from the animal's targets, and
+// Apply puts the suggested quantities straight into the calculator
+// table — the calculation then shows exactly as before, only with the
+// suggested numbers in it.
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, Lightbulb, RefreshCw, X } from 'lucide-react';
 import {
   suggestRation,
+  suggestRationAuto,
+  type AutoContext,
   type RationTargets,
   type SuggestFeedItem,
 } from '../lib/rationSuggest';
+
+type SuggestMode = 'auto' | 'select';
 
 interface RationSuggestModalProps {
   open: boolean;
@@ -22,6 +36,9 @@ interface RationSuggestModalProps {
   items: SuggestFeedItem[];
   initialSelectedIds: string[];
   onApply: (quantities: { [id: string]: number }) => void;
+  /** Auto Suggestion needs the animal's milk yield (dairy) or daily
+      weight gain (fattening) to pick the must-use Nourish feed. */
+  autoContext?: AutoContext;
 }
 
 function achievedColor(pct: number): string {
@@ -39,20 +56,39 @@ export default function RationSuggestModal({
   items,
   initialSelectedIds,
   onApply,
+  autoContext,
 }: RationSuggestModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
+  const [mode, setMode] = useState<SuggestMode>('auto');
+  // Change variant in Auto mode: 0 = cheapest combination, each tap
+  // steps to the next one (the must-use feeds stay fixed).
+  const [variant, setVariant] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Fresh selection every time the popup opens (preselects whatever the
-  // table already has quantities for).
+  // table already has quantities for). Auto Suggestion is the default —
+  // it is the lowest-cost accurate suggestion, starting from the
+  // cheapest combination.
   useEffect(() => {
     if (open) {
       setSelectedIds(initialSelectedIds);
+      setMode('auto');
+      setVariant(0);
       setDropdownOpen(false);
     }
     // Only the open/close transition matters here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open ]);
+
+  // When the ingredients list opens, bring it into view — the list is
+  // tall now, so on a phone it would otherwise sit half below the
+  // visible area and the user would not see what they are picking.
+  useEffect(() => {
+    if (dropdownOpen) {
+      dropdownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [dropdownOpen]);
 
   const concentrates = useMemo(
     () => items.filter((item) => item.feedType === 'concentrate'),
@@ -64,9 +100,32 @@ export default function RationSuggestModal({
   );
 
   const suggestion = useMemo(
-    () => suggestRation(items, selectedIds, targets),
-    [items, selectedIds, targets],
+    () =>
+      mode === 'auto'
+        ? suggestRationAuto(
+            items,
+            targets,
+            autoContext || { kind: 'dairy' },
+            variant,
+          )
+        : suggestRation(items, selectedIds, targets),
+    [items, selectedIds, targets, mode, autoContext, variant],
   );
+
+  // The must-use feeds in the current Auto suggestion (shown with a
+  // "Must" badge in the table). Select mode has none.
+  const mandatoryIds =
+    mode === 'auto' && suggestion && 'mandatoryIds' in suggestion
+      ? suggestion.mandatoryIds
+      : [];
+  const variantCount =
+    mode === 'auto' && suggestion && 'variantCount' in suggestion
+      ? suggestion.variantCount
+      : 0;
+  const variantIndex =
+    mode === 'auto' && suggestion && 'variantIndex' in suggestion
+      ? suggestion.variantIndex
+      : 0;
 
   if (!open) return null;
 
@@ -158,12 +217,49 @@ export default function RationSuggestModal({
             </div>
           </div>
 
-          {/* Available ingredients — multi dropdown */}
+          {/* Mode: Auto Suggestion or Select Ingredients */}
+          <div>
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setMode('auto')}
+                className={`rounded-lg px-2 py-2 text-xs sm:text-sm font-bold transition cursor-pointer ${
+                  mode === 'auto'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+              >
+                Auto Suggestion
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('select')}
+                className={`rounded-lg px-2 py-2 text-xs sm:text-sm font-bold transition cursor-pointer ${
+                  mode === 'select'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+              >
+                Select Ingredients
+              </button>
+            </div>
+            {mode === 'auto' && (
+              <p className="text-[11px] sm:text-xs text-slate-500 leading-snug mt-2">
+                The suggestion is built on the must-use feeds — the Nourish
+                feed for this animal&apos;s milk yield or weight gain, Bhushi
+                Mix, Green Grass and Straw or Silage — plus 1-3 other
+                ingredients, cheapest first, at the correct ratio.
+              </p>
+            )}
+          </div>
+
+          {/* Available ingredients — multi dropdown (Select Ingredients only) */}
+          {mode === 'select' && (
           <div>
             <div className="font-bold text-slate-800 text-xs sm:text-sm mb-1.5">
               Which ingredients do you have available?
             </div>
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setDropdownOpen((v) => !v)}
@@ -183,7 +279,7 @@ export default function RationSuggestModal({
               </button>
 
               {dropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-white border border-slate-300 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-white border border-slate-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
                   {renderGroup('Concentrate', concentrates)}
                   {renderGroup('Fodder', fodders)}
                 </div>
@@ -207,22 +303,45 @@ export default function RationSuggestModal({
               </div>
             )}
           </div>
+          )}
 
           {/* Suggestion */}
           {targets.dmReq <= 0 ? (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs sm:text-sm text-amber-800 font-medium">
               Enter the animal&apos;s weight first — without it the requirement cannot be calculated.
             </div>
-          ) : selectedIds.length === 0 ? (
+          ) : mode === 'select' && selectedIds.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-lg p-3 text-xs sm:text-sm text-slate-500">
               Select the ingredients you have available above to see the suggestion.
             </div>
           ) : !suggestion ? (
             <div className="bg-white border border-slate-200 rounded-lg p-3 text-xs sm:text-sm text-slate-500">
-              The selected ingredients have no dry matter data, so no suggestion can be made.
+              {mode === 'auto'
+                ? 'No combination of ingredients can meet the requirement — try Select Ingredients with different items.'
+                : 'The selected ingredients have no dry matter data, so no suggestion can be made.'}
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Change — next combination (Auto only). The must-use feeds
+                  stay fixed; only the other ingredients change. */}
+              {mode === 'auto' && variantCount > 1 && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] sm:text-xs font-semibold text-slate-500">
+                    Option {variantIndex + 1} of {variantCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVariant((v) => (v + 1) % variantCount)
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-emerald-600 text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                  >
+                    <RefreshCw size={14} />
+                    Change
+                  </button>
+                </div>
+              )}
+
               {/* Achieved vs required */}
               <div className="bg-white rounded-lg border border-slate-200 p-2.5 sm:p-3 text-[11px] sm:text-xs space-y-1">
                 <div className="font-bold text-slate-800">This suggestion gives you</div>
@@ -269,12 +388,19 @@ export default function RationSuggestModal({
                     {suggestion.rows.map((row) => (
                       <tr key={row.id} className="border-t border-slate-100">
                         <td className="p-2 border font-medium text-slate-800 break-words leading-tight">
-                          {row.name}
+                          <span className="inline-flex items-center gap-1.5 flex-wrap">
+                            {row.name}
+                            {mandatoryIds.includes(row.id) && (
+                              <span className="inline-block bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                Must
+                              </span>
+                            )}
+                          </span>
                           <span className="block text-[10px] text-slate-400 font-normal">
                             {row.feedType === 'concentrate' ? 'Concentrate' : 'Fodder'}
                           </span>
                         </td>
-                        <td className="p-2 border text-center font-bold text-emerald-800">{row.qtyKg}</td>
+                        <td className="p-2 border text-center font-bold text-emerald-800">{row.qtyKg.toFixed(1)}</td>
                         <td className="p-2 border text-center">{row.dmKg.toFixed(2)}</td>
                         <td className="p-2 border text-center">{row.cpKg.toFixed(2)}</td>
                         <td className="p-2 border text-center">{row.energyMj.toFixed(1)}</td>
@@ -283,7 +409,7 @@ export default function RationSuggestModal({
                     <tr className="font-bold bg-slate-100 border-t-2 border-slate-300">
                       <td className="p-2 border text-right">Total:</td>
                       <td className="p-2 border text-center text-emerald-800">
-                        {suggestion.rows.reduce((acc, r) => acc + r.qtyKg, 0).toFixed(2)}
+                        {suggestion.rows.reduce((acc, r) => acc + r.qtyKg, 0).toFixed(1)}
                       </td>
                       <td className="p-2 border text-center">{suggestion.totalDm.toFixed(2)}</td>
                       <td className="p-2 border text-center">{suggestion.totalCp.toFixed(2)}</td>
@@ -294,7 +420,9 @@ export default function RationSuggestModal({
               </div>
 
               <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
-                This is a starting point — after Apply you can still change any quantity in the table.
+                {mode === 'auto'
+                  ? 'Built on the must-use feeds (marked "Must") plus 1-3 other ingredients, cheapest first. The ration never goes below the requirement (DM, CP and Energy) — it sits just above it. Tap Change to see the next combination with different other ingredients. After Apply you can still change any quantity in the table.'
+                  : 'Every ingredient you selected is used, and the ration never goes below the requirement (DM, CP and Energy) — it sits just above it. After Apply you can still change any quantity in the table.'}
               </p>
             </div>
           )}

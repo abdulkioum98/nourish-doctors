@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '../supabaseClient';
 import { isOnline, queueLogout, refreshDataNow, getLastDataUpdated, clearOfflineUser } from '../lib/offline';
 import {
@@ -8,7 +9,17 @@ import {
   Home,
   Users,
   RefreshCw,
+  Download,
+  Smartphone,
+  AlertTriangle,
 } from 'lucide-react';
+
+// The APK lives in Supabase Storage (public bucket "app"). Upload the
+// latest APK there as "nourish-doctors.apk" (see download-app-bucket.sql)
+// and the Download App button below serves it. Change these two lines
+// if the file ever moves.
+const APK_BUCKET = 'app';
+const APK_PATH = 'nourish-doctors.apk';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -31,11 +42,29 @@ export default function Sidebar({
     getLastDataUpdated(),
   );
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+  const [showDownloadNotice, setShowDownloadNotice] = useState(false);
 
   // The timestamp may have changed while the sidebar was closed.
   useEffect(() => {
     if (isOpen) setLastUpdated(getLastDataUpdated());
   }, [isOpen]);
+
+  // Start the APK download straight from its storage URL, so it appears
+  // in the browser's download manager the moment it is tapped, with the
+  // browser's own progress bar (no invisible Blob fetch first).
+  const handleDownloadApp = () => {
+    const { data } = supabase.storage
+      .from(APK_BUCKET)
+      .getPublicUrl(APK_PATH, { download: APK_PATH });
+    const a = document.createElement('a');
+    a.href = data.publicUrl;
+    a.download = APK_PATH;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setShowDownloadNotice(false);
+    onClose();
+  };
 
   const formatLastUpdated = (ts: number | null): string => {
     if (!ts) return 'not yet';
@@ -194,6 +223,21 @@ export default function Sidebar({
               </button>
             )}
 
+            {/* Download App — browser only. Inside the installed app there
+                is nothing to download, so the button is hidden there. */}
+            {!Capacitor.isNativePlatform() && (
+              <button
+                onClick={() => setShowDownloadNotice(true)}
+                className="w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all duration-150 text-gray-700 hover:bg-slate-100 hover:text-slate-900"
+              >
+                <Download size={18} className="text-emerald-700" />
+                <span>Download App</span>
+                <span className="ml-auto text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full">
+                  APK
+                </span>
+              </button>
+            )}
+
             {/* Informational Message */}
             <div className="pt-6 px-3">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-slate-500 text-xs text-center leading-relaxed">
@@ -250,6 +294,85 @@ export default function Sidebar({
           </div>
         </div>
       </div>
+
+      {/* Download App — install notice. The APK is not from the Play
+          Store, so every phone shows some warning at install time. */}
+      {showDownloadNotice && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowDownloadNotice(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[88vh]">
+            <div className="bg-amber-500 text-white p-3 sm:p-4 flex items-center gap-2 shrink-0">
+              <AlertTriangle size={20} className="shrink-0" />
+              <h3 className="font-bold text-sm sm:text-base">Before you install</h3>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed">
+              <p>
+                This app is <b>not from the Google Play Store</b>, so your phone may
+                show a warning while installing it. This is normal for an app
+                installed directly (APK). Tap <b>“Install anyway”</b> or <b>“Agree”</b> to
+                continue — the app is safe.
+              </p>
+              <div>
+                <div className="font-bold text-slate-800 mb-1.5">
+                  What your phone may show
+                </div>
+                <ul className="space-y-2">
+                  <li className="flex gap-2">
+                    <Smartphone size={15} className="shrink-0 mt-0.5 text-slate-400" />
+                    <span>
+                      <b>Samsung:</b> “Install unknown apps” — allow your browser to
+                      install apps; Play Protect may also warn — tap “Install anyway”.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <Smartphone size={15} className="shrink-0 mt-0.5 text-slate-400" />
+                    <span>
+                      <b>Xiaomi / Redmi / POCO:</b> “Install unknown apps” permission
+                      plus a security scan — tap “Allow” / “Install anyway”.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <Smartphone size={15} className="shrink-0 mt-0.5 text-slate-400" />
+                    <span>
+                      <b>Oppo / Vivo / Realme:</b> “Install unknown apps” — allow the
+                      browser, then tap “Install” / “Continue”.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <Smartphone size={15} className="shrink-0 mt-0.5 text-slate-400" />
+                    <span>
+                      <b>Google Pixel / other Android:</b> a Play Protect warning —
+                      tap “Install anyway”.
+                    </span>
+                  </li>
+                </ul>
+              </div>
+              <p className="text-slate-500">
+                After the download finishes, open the APK file from your Downloads
+                and follow the prompts on your phone.
+              </p>
+            </div>
+            <div className="p-3 bg-white border-t border-slate-200 flex justify-end items-center gap-2 shrink-0">
+              <button
+                onClick={() => setShowDownloadNotice(false)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDownloadApp}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-2 shadow-xs transition cursor-pointer"
+              >
+                <Download size={15} />
+                <span>Download APK</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

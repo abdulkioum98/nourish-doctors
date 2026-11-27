@@ -140,12 +140,14 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     { id: 'nourish-sinking-fish', title: 'Sinking Fish Feeds' },
   ];
 
+  // Fish Farming Guide — in farming sequence: prepare the pond first,
+  // then water, then stocking, then nursery feeding, then feeding rate.
   const aquaGuideSubItems = [
-    { id: 'aqua-feeding-rate', title: 'Feeding Rate' },
-    { id: 'aqua-stocking-density', title: 'Stocking Density' },
-    { id: 'aqua-water-quality', title: 'Water Quality' },
-    { id: 'aqua-nursery-feeding', title: 'Nursery Feeding' },
     { id: 'aqua-pond-prep', title: 'Pond Preparation' },
+    { id: 'aqua-water-quality', title: 'Water Quality' },
+    { id: 'aqua-stocking-density', title: 'Stocking Density' },
+    { id: 'aqua-nursery-feeding', title: 'Nursery Feeding' },
+    { id: 'aqua-feeding-rate', title: 'Feeding Rate' },
   ];
 
   // Materials (Training Materials — PDF / PPTX library)

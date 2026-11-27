@@ -1082,6 +1082,7 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
           targetConcentratePct,
           targetFodderPct,
         }}
+        autoContext={{ kind: 'dairy', milkYieldL: milkYield }}
         items={itemList.map((item) => ({
           id: item.id,
           name: item.name,

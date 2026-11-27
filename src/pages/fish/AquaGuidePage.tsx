@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   Fish,
@@ -27,18 +27,24 @@ export type GuideTopic =
 interface AquaGuidePageProps {
   onBack: () => void;
   topic?: GuideTopic;
+  // Called when a tile is tapped, so the app navigates to that topic's
+  // own page — the navbar then shows that topic's title instead of
+  // staying stuck on the page the guide was first opened from.
+  onSelectTopic?: (topic: GuideTopic) => void;
 }
 
+// Tile order = the farming sequence: prepare the pond first, then water,
+// then stocking, then nursery feeding, then the feeding rate.
 const TILES: Array<{
   id: GuideTopic;
   label: string;
   icon: React.ComponentType<{ size?: number | string; className?: string }>;
 }> = [
-  { id: 'feeding-rate', label: 'Feeding Rate', icon: Fish },
-  { id: 'stocking-density', label: 'Stocking Density', icon: Layers },
-  { id: 'water-quality', label: 'Water Quality', icon: Droplets },
-  { id: 'nursery-feeding', label: 'Nursery Feeding', icon: Sprout },
   { id: 'pond-prep', label: 'Pond Preparation', icon: FlaskConical },
+  { id: 'water-quality', label: 'Water Quality', icon: Droplets },
+  { id: 'stocking-density', label: 'Stocking Density', icon: Layers },
+  { id: 'nursery-feeding', label: 'Nursery Feeding', icon: Sprout },
+  { id: 'feeding-rate', label: 'Feeding Rate', icon: Fish },
 ];
 
 // Small reference table — cyan header row, alternating row shading,
@@ -94,12 +100,26 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export default function AquaGuidePage({
   onBack,
-  topic = 'feeding-rate',
+  topic = 'pond-prep',
+  onSelectTopic,
 }: AquaGuidePageProps) {
   const [tab, setTab] = useState<GuideTopic>(topic);
   const [species, setSpecies] = useState<string>('tilapia');
   const activeSpecies =
     FEEDING_RATES.find((s) => s.id === species) || FEEDING_RATES[0];
+
+  // The page is the same component for every topic, so React reuses it
+  // when moving between topics — the tab must follow the topic prop,
+  // or the content would stay on the topic the guide was first opened
+  // from (and the navbar would keep showing that first topic's title).
+  useEffect(() => {
+    setTab(topic);
+  }, [topic]);
+
+  const handleSelectTopic = (next: GuideTopic) => {
+    setTab(next);
+    onSelectTopic?.(next);
+  };
 
   return (
     <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
@@ -126,7 +146,7 @@ export default function AquaGuidePage({
           return (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => handleSelectTopic(t.id)}
               className={`rounded-2xl px-1 py-3 flex flex-col items-center gap-1 transition-all duration-200 ${
                 active
                   ? 'bg-gradient-to-br from-cyan-600 to-cyan-700 text-white shadow-lg shadow-cyan-600/30 scale-[1.03]'

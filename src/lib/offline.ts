@@ -66,7 +66,7 @@ interface QueryCacheRow {
   updatedAt: number;
 }
 
-export type OutboxKind = 'user_log_upsert' | 'user_log_logout';
+export type OutboxKind = 'user_log_upsert' | 'user_log_logout' | 'home_visit_insert';
 
 interface OutboxRow {
   id?: number;
@@ -314,15 +314,75 @@ export async function syncAllReferenceData(): Promise<void> {
 // never block login, logout or any page. Offline they are queued in Dexie
 // and sent when the phone is back online.
 // ---------------------------------------------------------------------------
+
+// Upsert a user_logs row WITHOUT needing a unique constraint on
+// user_email. The table has none, so the old
+// `.upsert([entry], { onConflict: 'user_email' })` failed on EVERY call
+// with 42P10 ("no unique or exclusion constraint matching the ON
+// CONFLICT specification") — a 400 on every homepage load/reload, and
+// the failed entry stayed queued in the outbox retrying forever.
+// Update the user's active session row first; if there is none,
+// insert a fresh row. A logout + re-login therefore keeps the old
+// (logged-out) row as history and starts a new one.
+//
+// SERIALIZED per email: app open fires updateUserOnlineStatus several
+// times at once (stored user + real session + auth listener), and
+// without this the concurrent calls each saw "no active row" and each
+// inserted one — that is how 5 identical "Pending / Logged In" rows
+// appeared for one user. Chained per email, the first call inserts
+// and the rest update that same row.
+const upsertQueues = new Map<string, Promise<void>>();
+
+async function upsertUserLogInner(entry: Record<string, unknown>): Promise<void> {
+  const email = String(entry.user_email || '');
+  if (!email) return;
+  const { data, error: updateError } = await supabase
+    .from('user_logs')
+    .update(entry)
+    .eq('user_email', email)
+    .eq('is_logged_in', true)
+    .select('id');
+  if (updateError) throw updateError;
+  if (data && data.length > 0) return;
+  const { error: insertError } = await supabase
+    .from('user_logs')
+    .insert([entry]);
+  if (insertError) throw insertError;
+}
+
+function upsertUserLog(entry: Record<string, unknown>): Promise<void> {
+  const email = String(entry.user_email || '');
+  if (!email) return Promise.resolve();
+  const prev = upsertQueues.get(email) || Promise.resolve();
+  const next = prev.then(() => upsertUserLogInner(entry)).catch(() => {});
+  upsertQueues.set(email, next);
+  return next;
+}
+
+// Refresh the "Logged In" row on app reopen — UPDATE ONLY, never
+// insert. A row is created only by a real OTP login (EmailLogin).
+// So if the admin deletes a log row, it STAYS deleted: reopening the
+// app only refreshes a row that is still there, it never recreates
+// one. Offline it does nothing (the refresh can wait until online).
+export async function refreshUserOnlineStatus(email: string): Promise<void> {
+  if (!email || !isOnline()) return;
+  try {
+    await supabase
+      .from('user_logs')
+      .update({ is_logged_in: true, login_time: new Date().toISOString() })
+      .eq('user_email', email)
+      .eq('is_logged_in', true);
+  } catch {
+    // Best-effort only; never break a page.
+  }
+}
+
 export async function sendOrQueueUserLog(
   entry: Record<string, unknown>,
 ): Promise<void> {
   if (isOnline()) {
     try {
-      const { error } = await supabase
-        .from('user_logs')
-        .upsert([entry], { onConflict: 'user_email' });
-      if (error) throw error;
+      await upsertUserLog(entry);
       return;
     } catch (err) {
       console.error('user_logs upsert failed, queuing:', err);
@@ -339,8 +399,36 @@ export async function sendOrQueueUserLog(
   }
 }
 
-export async function queueLogout(email: string): Promise<void> {
-  // A logout must stick: forget the remembered user so an offline reopen
+// ---------------------------------------------------------------------------
+// home_visits outbox. One row per home-page visit (User Info page). Same
+// fire-and-forget rule as user_logs: it must never block any page.
+// Online it inserts at once; offline it is queued in Dexie and sent
+// when the phone is back online.
+// ---------------------------------------------------------------------------
+export async function sendOrQueueHomeVisit(
+  entry: Record<string, unknown>,
+): Promise<void> {
+  if (isOnline()) {
+    try {
+      const { error } = await supabase.from('home_visits').insert([entry]);
+      if (error) throw error;
+      return;
+    } catch (err) {
+      console.error('home_visits insert failed, queuing:', err);
+    }
+  }
+  try {
+    await offlineDb.outbox.add({
+      kind: 'home_visit_insert',
+      payload: entry,
+      createdAt: Date.now(),
+    });
+  } catch {
+    // Log loss is acceptable; never break a page.
+  }
+}
+
+export async function queueLogout(email: string): Promise<void> {  // A logout must stick: forget the remembered user so an offline reopen
   // never brings them back.
   clearOfflineUser();
   try {
@@ -395,15 +483,17 @@ export async function processOutbox(): Promise<void> {
   for (const row of rows) {
     try {
       if (row.kind === 'user_log_upsert') {
-        const { error } = await supabase
-          .from('user_logs')
-          .upsert([row.payload], { onConflict: 'user_email' });
-        if (error) throw error;
+        await upsertUserLog(row.payload);
       } else if (row.kind === 'user_log_logout') {
         await processLogoutEntry(
           String(row.payload.user_email || ''),
           String(row.payload.logout_time || new Date().toISOString()),
         );
+      } else if (row.kind === 'home_visit_insert') {
+        const { error } = await supabase
+          .from('home_visits')
+          .insert([row.payload]);
+        if (error) throw error;
       }
       if (row.id !== undefined) await offlineDb.outbox.delete(row.id);
     } catch (err) {

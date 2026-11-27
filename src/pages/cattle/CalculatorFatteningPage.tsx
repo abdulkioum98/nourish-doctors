@@ -55,7 +55,7 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
       if (!nourishFeeds || !otherFeeds) return;
       // Nourish Feeds Mapping (Default feed_type -> concentrate)
       const mappedNourishPrice: PriceListItem[] = (nourishFeeds || []).map((item: any) => ({
-        id: item.id,
+        id: `nourish_${item.id}`,
         name: item.name,
         price_per_kg: item.price || 0,
         feed_type: 'concentrate',
@@ -63,7 +63,7 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
       }));
 
       const mappedNourishNutrient: FeedNutrientItem[] = (nourishFeeds || []).map((item: any) => ({
-        id: item.id,
+        id: `nourish_${item.id}`,
         name: item.name,
         category: item.category || 'fattening',
         feed_type: 'concentrate',
@@ -74,7 +74,7 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
 
       // Other Ingredients Mapping
       const mappedOtherPrice: PriceListItem[] = (otherFeeds || []).map((item: any) => ({
-        id: item.id,
+        id: `other_${item.id}`,
         name: item.name,
         price_per_kg: item.price || 0,
         feed_type: item.feed_type || 'concentrate',
@@ -82,7 +82,7 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
       }));
 
       const mappedOtherNutrient: FeedNutrientItem[] = (otherFeeds || []).map((item: any) => ({
-        id: item.id,
+        id: `other_${item.id}`,
         name: item.name,
         category: 'other',
         feed_type: item.feed_type || 'concentrate',
@@ -823,6 +823,7 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
           targetConcentratePct,
           targetFodderPct,
         }}
+        autoContext={{ kind: 'fattening', weightGainG: targetGainPerDay }}
         items={suggestItems}
         initialSelectedIds={priceList.filter((item) => (quantities[item.id] || 0) > 0).map((item) => item.id)}
         onApply={(q) => {

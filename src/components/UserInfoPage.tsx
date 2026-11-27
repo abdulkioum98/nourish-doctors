@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { isOnline, loadCachedFirst, setCached, shouldUseRealtime } from '../lib/offline';
-import { Shield, Clock, Mail, Laptop, Trash2 } from 'lucide-react';
+import { Shield, Clock, Mail, Laptop, Trash2, Home, Smartphone, Globe, Calendar, ChevronDown, ChevronRight, History } from 'lucide-react';
 
 interface SessionUser {
   email?: string;
@@ -27,10 +27,49 @@ interface UserLog {
   device_info?: string;
 }
 
+interface HomeVisit {
+  id: number;
+  user_email: string;
+  visited_at: string;
+  source: 'app' | 'browser';
+  device_model?: string | null;
+  device_info?: string | null;
+}
+
+/** Local YYYY-MM-DD for a timestamp (the visit date in the phone's timezone). */
+function localDateKey(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function todayKey(): string {
+  return localDateKey(new Date().toISOString());
+}
+
 export default function UserInfoPage({ session }: UserInfoPageProps) {
   const [logs, setLogs] = useState<UserLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [, setTick] = useState(0);
+
+  // Home page visits (daily).
+  const [visits, setVisits] = useState<HomeVisit[]>([]);
+  const [visitsLoading, setVisitsLoading] = useState<boolean>(true);
+  const [selectedDate, setSelectedDate] = useState<string>(todayKey());
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
+  // Date range (Multi): when marked, From-To pickers replace the single
+  // date. Default range = last 7 days (today + 6 days back).
+  const [multiDate, setMultiDate] = useState<boolean>(false);
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    return localDateKey(d.toISOString());
+  });
+  const [toDate, setToDate] = useState<string>(todayKey());
+  // Delete History range, in days (1 month = 30 days, 3 months = 90, 6 = 180).
+  const [deleteRangeDays, setDeleteRangeDays] = useState<number>(7);
 
   const currentUserEmail = session?.user?.email;
 
@@ -104,6 +143,123 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
       () => setLoading(false),
     );
   }
+
+  // Home page visits: cache-first fetch + Realtime for new visits.
+  useEffect(() => {
+    fetchVisits();
+
+    if (!shouldUseRealtime()) return;
+
+    const channel = supabase
+      .channel('public:home_visits')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'home_visits' },
+        (payload) => {
+          setVisits((prev) => [payload.new as HomeVisit, ...prev]);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  async function fetchVisits() {
+    setVisitsLoading(true);
+    await loadCachedFirst<HomeVisit[]>(
+      'home_visits:all',
+      async () => {
+        const { data, error } = await supabase
+          .from('home_visits')
+          .select('*')
+          .order('visited_at', { ascending: false })
+          .limit(2000);
+
+        if (error) {
+          console.error('Error fetching home visits:', error);
+          return [];
+        }
+        return (data ?? []) as HomeVisit[];
+      },
+      (rows) => setVisits(rows),
+      () => setVisitsLoading(false),
+    );
+  }
+
+  // Visits on the selected date (or in the From-To range when Multi is
+  // on), grouped per user (newest first). From/To are auto-swapped if
+  // the user picks From after To.
+  const dayVisits = useMemo(() => {
+    if (!multiDate) {
+      return visits.filter((v) => localDateKey(v.visited_at) === selectedDate);
+    }
+    const lo = fromDate <= toDate ? fromDate : toDate;
+    const hi = fromDate <= toDate ? toDate : fromDate;
+    return visits.filter((v) => {
+      const k = localDateKey(v.visited_at);
+      return k >= lo && k <= hi;
+    });
+  }, [visits, selectedDate, multiDate, fromDate, toDate]);
+  const visitSummary = useMemo(() => {
+    const byUser = new Map<string, HomeVisit[]>();
+    dayVisits.forEach((v) => {
+      const list = byUser.get(v.user_email) || [];
+      list.push(v);
+      byUser.set(v.user_email, list);
+    });
+    // Each user's list is already newest-first (visits are newest-first).
+    return Array.from(byUser.entries()).map(([email, list]) => ({
+      email,
+      count: list.length,
+      last: list[0],
+      list,
+    }));
+  }, [dayVisits]);
+
+  // Delete History: removes EVERYONE's home page visits in the chosen
+  // range (visited_at >= now - N days). The range label for the confirm.
+  const deleteRangeLabel =
+    deleteRangeDays === 30
+      ? '1 month'
+      : deleteRangeDays === 90
+        ? '3 months'
+        : deleteRangeDays === 180
+          ? '6 months'
+          : `${deleteRangeDays} day${deleteRangeDays !== 1 ? 's' : ''}`;
+
+  const handleDeleteHistory = async () => {
+    if (!isOnline()) {
+      alert('You are offline. Deleting history needs internet.');
+      return;
+    }
+    const cutoff = new Date(Date.now() - deleteRangeDays * 24 * 60 * 60 * 1000).toISOString();
+    const inRange = visits.filter((v) => v.visited_at >= cutoff);
+    if (inRange.length === 0) {
+      alert(`No home page visits in the last ${deleteRangeLabel}.`);
+      return;
+    }
+    const ok = window.confirm(
+      `Delete ${inRange.length} home page visit${inRange.length !== 1 ? 's' : ''} from the last ${deleteRangeLabel} for ALL users? This cannot be undone.`,
+    );
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from('home_visits')
+      .delete()
+      .gte('visited_at', cutoff);
+
+    if (error) {
+      alert('Failed to delete history: ' + error.message);
+      return;
+    }
+    const remaining = visits.filter((v) => v.visited_at < cutoff);
+    setVisits(remaining);
+    await setCached('home_visits:all', remaining);
+    setExpandedEmail(null);
+    alert(`Deleted ${inRange.length} home page visit${inRange.length !== 1 ? 's' : ''} from the last ${deleteRangeLabel}.`);
+  };
 
   const handleDeleteLog = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this log?')) return;
@@ -188,6 +344,242 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
         </div>
       </div>
 
+      {/* ---------- Home Page Visits (daily) ---------- */}
+      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-2xl">
+              <Home size={22} />
+            </div>
+            <div>
+              <h2 className="font-extrabold text-slate-800 text-base sm:text-lg leading-tight">
+                Home Page Visits
+              </h2>
+              <p className="text-xs text-slate-500">
+                {dayVisits.length} visit{dayVisits.length !== 1 ? 's' : ''} by{' '}
+                {visitSummary.length} user{visitSummary.length !== 1 ? 's' : ''}{' '}
+                {multiDate
+                  ? `from ${fromDate <= toDate ? fromDate : toDate} to ${fromDate <= toDate ? toDate : fromDate}`
+                  : 'on this day'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Multi — small checkbox; when marked, From-To pickers appear */}
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={multiDate}
+                onChange={(e) => {
+                  setMultiDate(e.target.checked);
+                  setExpandedEmail(null);
+                }}
+                className="w-4 h-4 accent-emerald-700 cursor-pointer"
+              />
+              <span className="text-[11px] font-bold text-slate-600">Multi</span>
+            </label>
+
+            {multiDate ? (
+              <>
+                <label className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 cursor-pointer">
+                  <span className="text-[11px] font-bold text-slate-500">From</span>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setFromDate(e.target.value);
+                        setExpandedEmail(null);
+                      }
+                    }}
+                    className="bg-transparent text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+                  />
+                </label>
+                <label className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 cursor-pointer">
+                  <span className="text-[11px] font-bold text-slate-500">To</span>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setToDate(e.target.value);
+                        setExpandedEmail(null);
+                      }
+                    }}
+                    className="bg-transparent text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                {/* Date filter */}
+                <label className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer">
+                  <Calendar size={16} className="text-slate-400 shrink-0" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setSelectedDate(e.target.value);
+                        setExpandedEmail(null);
+                      }
+                    }}
+                    className="bg-transparent text-xs sm:text-sm font-semibold text-slate-700 outline-none cursor-pointer"
+                  />
+                </label>
+                {selectedDate !== todayKey() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(todayKey());
+                      setExpandedEmail(null);
+                    }}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition cursor-pointer"
+                  >
+                    Today
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Delete History — small, right side (rarely used) */}
+            <span className="hidden sm:block w-px h-6 bg-slate-200 mx-1" />
+            <select
+              value={deleteRangeDays}
+              onChange={(e) => setDeleteRangeDays(Number(e.target.value))}
+              title="Delete history range"
+              className="bg-rose-50/70 border border-rose-200 text-rose-800 text-[11px] font-semibold rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+            >
+              <option value={1}>Last 1 day</option>
+              <option value={3}>Last 3 days</option>
+              <option value={7}>Last 7 days</option>
+              <option value={15}>Last 15 days</option>
+              <option value={30}>Last 1 month</option>
+              <option value={90}>Last 3 months</option>
+              <option value={180}>Last 6 months</option>
+            </select>
+            <button
+              type="button"
+              onClick={handleDeleteHistory}
+              title="Delete history"
+              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition cursor-pointer"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </div>
+
+        {visitsLoading ? (
+          <div className="p-12 text-center text-slate-400 font-medium animate-pulse">Loading visits...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-slate-50/80 text-slate-600 border-b border-slate-100 uppercase text-xs tracking-wider">
+                  <th className="p-4 font-bold whitespace-nowrap">User Email</th>
+                  <th className="p-4 font-bold text-center whitespace-nowrap">Visits</th>
+                  <th className="p-4 font-bold whitespace-nowrap">Last Visit</th>
+                  <th className="p-4 font-bold whitespace-nowrap">Source</th>
+                  <th className="p-4 font-bold whitespace-nowrap">Phone Model</th>
+                  <th className="p-4 font-bold text-center whitespace-nowrap">History</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {visitSummary.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-10 text-center text-slate-400 font-medium">
+                      {multiDate
+                        ? 'No home page visits in this date range.'
+                        : 'No home page visits on this date.'}
+                    </td>
+                  </tr>
+                ) : (
+                  visitSummary.map((row) => {
+                    const expanded = expandedEmail === row.email;
+                    return (
+                      <React.Fragment key={row.email}>
+                        <tr className="hover:bg-emerald-50/30 transition-colors">
+                          <td className="p-4 font-semibold text-slate-800 whitespace-nowrap">
+                            <div className="flex items-center space-x-2.5">
+                              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                                <Mail size={16} />
+                              </div>
+                              <span>{row.email}</span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className="inline-flex items-center justify-center min-w-8 px-2 py-1 bg-emerald-700 text-white rounded-full text-xs font-bold">
+                              {row.count}×
+                            </span>
+                          </td>
+                          <td className="p-4 text-slate-500 font-medium text-xs whitespace-nowrap">
+                            {new Date(row.last.visited_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </td>
+                          <td className="p-4 whitespace-nowrap">
+                            {row.last.source === 'app' ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-violet-50 text-violet-700 border border-violet-100 rounded-full text-xs font-bold">
+                                <Smartphone size={13} />
+                                App
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50 text-sky-700 border border-sky-100 rounded-full text-xs font-bold">
+                                <Globe size={13} />
+                                Browser
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
+                            {row.last.device_model || 'Unknown'}
+                          </td>
+                          <td className="p-4 text-center whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedEmail(expanded ? null : row.email)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                            >
+                              <History size={14} />
+                              History
+                              {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </button>
+                          </td>
+                        </tr>
+                        {expanded && (
+                          <tr className="bg-slate-50/70">
+                            <td colSpan={6} className="p-4">
+                              <div className="text-xs font-bold text-slate-600 mb-2">
+                                {row.email} — {row.count} visit{row.count !== 1 ? 's' : ''}{' '}
+                                {multiDate
+                                  ? `from ${fromDate <= toDate ? fromDate : toDate} to ${fromDate <= toDate ? toDate : fromDate}`
+                                  : `on ${selectedDate}`}
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {row.list.map((v) => (
+                                  <div
+                                    key={v.id}
+                                    className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2"
+                                  >
+                                    <span className="font-bold text-slate-700 text-xs whitespace-nowrap">
+                                      {new Date(v.visited_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-slate-500 truncate">
+                                      {v.source === 'app' ? 'App' : 'Browser'} • {v.device_model || 'Unknown'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
       <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-slate-400 font-medium animate-pulse">Loading activity logs...</div>
@@ -248,11 +640,11 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
                           {log.is_logged_in ? (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                               <span className="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-ping"></span>
-                              Online
+                              Logged In
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
-                              Offline
+                              Logged Out
                             </span>
                           )}
                         </td>
@@ -285,6 +677,7 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
           </div>
         )}
       </div>
+
     </div>
   );
 }

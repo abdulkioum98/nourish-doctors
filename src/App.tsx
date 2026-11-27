@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -52,7 +52,7 @@ import SonaliVaccination from './pages/poultry/Sonali/SonaliVaccination';
 // Folder-based imports (Fish)
 import NourishFloatingFishFeeds from './pages/fish/NourishFloatingFishFeeds';
 import NourishSinkingFishFeeds from './pages/fish/NourishSinkingFishFeeds';
-import AquaGuidePage from './pages/fish/AquaGuidePage';
+import AquaGuidePage, { type GuideTopic } from './pages/fish/AquaGuidePage';
 
 // Training Materials (PDF / PPTX library)
 import TrainingMaterialsPage from './pages/materials/TrainingMaterialsPage';
@@ -65,12 +65,14 @@ import {
   initOfflineSync,
   syncAllReferenceData,
   processOutbox,
-  sendOrQueueUserLog,
+  sendOrQueueHomeVisit,
+  refreshUserOnlineStatus,
   isOnline,
   saveOfflineUser,
   getOfflineUser,
   clearOfflineUser,
 } from './lib/offline';
+import { buildHomeVisit } from './lib/deviceInfo';
 
 export type CattleData = CowData | FatteningCowData;
 
@@ -164,13 +166,11 @@ export default function App() {
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
 
   // Helper function to update user online status in database.
-  // Offline-safe: queued in Dexie and sent when back online, never blocks.
+  // UPDATE ONLY (refreshUserOnlineStatus): it refreshes the "Logged In"
+  // row if one is still there, but never creates one — a row is created
+  // only by a real OTP login. So a log the admin deletes stays deleted.
   const updateUserOnlineStatus = async (email: string) => {
-    await sendOrQueueUserLog({
-      user_email: email,
-      is_logged_in: true,
-      login_time: new Date().toISOString(),
-    });
+    await refreshUserOnlineStatus(email);
   };
 
   // 1. SUPABASE AUTH SESSION CHECK & AUTO ONLINE SYNC
@@ -274,6 +274,24 @@ export default function App() {
     }
   }, [currentPage, scrollPosition]);
 
+  // Log a home-page visit (User Info page). Fires when the home page
+  // opens and every time the user comes back to it. Fire-and-forget:
+  // online it inserts at once, offline it is queued in Dexie and sent
+  // when back online — it never blocks the page. The 30-second dedupe
+  // stops double-logging when the session refreshes while already on
+  // home; a genuine return after 30s counts as a new visit.
+  const lastHomeVisitRef = useRef<{ email: string; at: number } | null>(null);
+  useEffect(() => {
+    if (currentPage !== 'home') return;
+    const email = session?.user?.email;
+    if (!email) return;
+    const now = Date.now();
+    const last = lastHomeVisitRef.current;
+    if (last && last.email === email && now - last.at < 30000) return;
+    lastHomeVisitRef.current = { email, at: now };
+    sendOrQueueHomeVisit(buildHomeVisit(email));
+  }, [currentPage, session]);
+
   // 2. Browser Navigation Sync
   useEffect(() => {
     const handleUrlCheck = () => {
@@ -306,6 +324,21 @@ export default function App() {
     if (newPage !== 'home') {
       window.scrollTo(0, 0);
     }
+  };
+
+  // Tapping a tile inside the Aqua Guide moves to that topic's own page,
+  // so the navbar shows that topic's title (otherwise it stays stuck on
+  // the topic the guide was first opened from). No history entry — tile
+  // taps inside the guide are not "back" steps.
+  const handleAquaGuideTopic = (topic: GuideTopic) => {
+    const pageByTopic: Record<GuideTopic, PageType> = {
+      'pond-prep': 'aqua-pond-prep',
+      'water-quality': 'aqua-water-quality',
+      'stocking-density': 'aqua-stocking-density',
+      'nursery-feeding': 'aqua-nursery-feeding',
+      'feeding-rate': 'aqua-feeding-rate',
+    };
+    navigateToPage(pageByTopic[topic], false);
   };
 
   const handleSidebarNavigate = (id: string, label: string) => {
@@ -684,23 +717,23 @@ export default function App() {
 
         {/* --- AQUA GUIDE PAGES --- */}
         {currentPage === 'aqua-feeding-rate' && (
-          <AquaGuidePage topic="feeding-rate" onBack={handleGoHome} />
+          <AquaGuidePage topic="feeding-rate" onBack={handleGoHome} onSelectTopic={handleAquaGuideTopic} />
         )}
 
         {currentPage === 'aqua-stocking-density' && (
-          <AquaGuidePage topic="stocking-density" onBack={handleGoHome} />
+          <AquaGuidePage topic="stocking-density" onBack={handleGoHome} onSelectTopic={handleAquaGuideTopic} />
         )}
 
         {currentPage === 'aqua-water-quality' && (
-          <AquaGuidePage topic="water-quality" onBack={handleGoHome} />
+          <AquaGuidePage topic="water-quality" onBack={handleGoHome} onSelectTopic={handleAquaGuideTopic} />
         )}
 
         {currentPage === 'aqua-nursery-feeding' && (
-          <AquaGuidePage topic="nursery-feeding" onBack={handleGoHome} />
+          <AquaGuidePage topic="nursery-feeding" onBack={handleGoHome} onSelectTopic={handleAquaGuideTopic} />
         )}
 
         {currentPage === 'aqua-pond-prep' && (
-          <AquaGuidePage topic="pond-prep" onBack={handleGoHome} />
+          <AquaGuidePage topic="pond-prep" onBack={handleGoHome} onSelectTopic={handleAquaGuideTopic} />
         )}
 
         {/* --- TRAINING MATERIALS --- */}
