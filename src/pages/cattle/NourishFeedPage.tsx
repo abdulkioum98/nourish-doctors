@@ -8,6 +8,7 @@ import {
   CALF_FEED_NOTE,
   type CattleProduct,
 } from '../../lib/feedDetails';
+import { hasFeedImage } from '../../lib/feedImage';
 
 export interface FeedItem {
   id: string;
@@ -19,6 +20,17 @@ export interface FeedItem {
   cp?: number;
   me?: number;
   category?: 'dairy' | 'fattening' | string;
+  bag_image_url?: string;
+  sample_image_url?: string;
+  // Extra nutrients from the database (stored WITHOUT "%", e.g. "12"
+  // or "65-70"). Shown on the card when present; the product (PPTX)
+  // value is the fallback.
+  moisture_max_pct?: string;
+  crude_fiber_pct?: string;
+  crude_fat_pct?: string;
+  calcium_pct?: string;
+  phosphorus_pct?: string;
+  tdn_pct?: string;
 }
 
 interface NourishFeedPageProps {
@@ -37,6 +49,24 @@ const namesMatch = (a: string, b: string): boolean => {
   return !!na && !!nb && (na.includes(nb) || nb.includes(na));
 };
 
+// Format a nutrient value with "%". Database values are stored without
+// it ("12", "65-70"); product values already carry it ("12%").
+const pct = (v: string | number | null | undefined): string => {
+  if (v === null || v === undefined) return '';
+  const s = String(v).trim();
+  if (s === '') return '';
+  return s.endsWith('%') ? s : `${s}%`;
+};
+
+// Database value wins; the product (PPTX) value is the fallback.
+const nutrient = (
+  dbVal: string | number | null | undefined,
+  pptxVal: string | number | null | undefined,
+): string => {
+  const fromDb = pct(dbVal);
+  return fromDb !== '' ? fromDb : pct(pptxVal);
+};
+
 // The 3 focused boxes on a product card: DM, CP, Energy (ME). When one of
 // them is missing (no database row for this product), the box takes the
 // next available value (TDN, crude fat, moisture, ...), so the card
@@ -49,10 +79,10 @@ const productKeyFigures = (
   if (db?.dm != null) figures.push({ label: 'DM', value: `${db.dm}%` });
   figures.push({ label: 'CP', value: product.cp });
   if (db?.me != null) figures.push({ label: 'Energy (MJ)', value: `${db.me}` });
-  figures.push({ label: 'TDN', value: product.tdn });
-  figures.push({ label: 'Crude Fat', value: product.fat });
-  figures.push({ label: 'Moisture', value: product.moisture });
-  figures.push({ label: 'Crude Fiber', value: product.fiber });
+  figures.push({ label: 'TDN', value: nutrient(db?.tdn_pct, product.tdn) });
+  figures.push({ label: 'Crude Fat', value: nutrient(db?.crude_fat_pct, product.fat) });
+  figures.push({ label: 'Moisture', value: nutrient(db?.moisture_max_pct, product.moisture) });
+  figures.push({ label: 'Crude Fiber', value: nutrient(db?.crude_fiber_pct, product.fiber) });
   return figures.slice(0, 3);
 };
 
@@ -61,17 +91,17 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'dairy' | 'fattening'>('all');
   const [loading, setLoading] = useState(true);
 
-  // Fetch nourish_feeds data from Supabase (cache-first: renders from
+  // Fetch cattle_feeds data from Supabase (cache-first: renders from
   // IndexedDB instantly, refreshes from network in the background).
   // READ-ONLY here — the calculator reads this same table, so nothing
   // below writes to it or changes its values.
   const fetchFeeds = async () => {
     setLoading(true);
     await loadCachedFirst<FeedItem[]>(
-      'nourish_feeds:all',
+      'cattle_feeds:all',
       async () => {
         const { data, error } = await supabase
-          .from('nourish_feeds')
+          .from('cattle_feeds')
           .select('*')
           .order('id', { ascending: true });
         if (error) {
@@ -96,7 +126,7 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
   };
 
   // The database row for a product card (by name), if the product is in
-  // nourish_feeds. Its DM / ME / price are what the calculator uses.
+  // cattle_feeds. Its DM / ME / price are what the calculator uses.
   const dbFeedForProduct = (productName: string) =>
     feeds.find((f) => namesMatch(f.name, productName));
 
@@ -187,18 +217,46 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
             {visibleProducts.map((product) => {
               const db = dbFeedForProduct(product.name);
               const figures = productKeyFigures(product, db);
+              // Bag + sample photos: the admin-uploaded image wins when
+              // present, else the static photo from the product file.
+              const bagImage = hasFeedImage(db?.bag_image_url)
+                ? db?.bag_image_url
+                : product.image;
+              const sampleImage = hasFeedImage(db?.sample_image_url)
+                ? db?.sample_image_url
+                : undefined;
               return (
                 <article
                   key={product.name}
                   className="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden flex flex-col"
                 >
-                  <div className="bg-emerald-50/70 flex items-center justify-center h-44 p-3">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="max-h-full max-w-full object-contain"
-                      loading="lazy"
-                    />
+                  <div className="bg-emerald-50/70 flex h-44">
+                    {bagImage ? (
+                      <div className={`flex items-center justify-center p-3 ${sampleImage ? 'flex-1 border-r border-emerald-100' : 'w-full'}`}>
+                        <img
+                          src={bagImage}
+                          alt={`${product.name} bag`}
+                          className="max-h-full max-w-full object-contain"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
+                    {sampleImage ? (
+                      <div className={`flex items-center justify-center p-3 ${bagImage ? 'flex-1' : 'w-full'}`}>
+                        <img
+                          src={sampleImage}
+                          alt={`${product.name} feed`}
+                          className="max-h-full max-w-full object-contain rounded-lg"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
+                    {!bagImage && !sampleImage ? (
+                      <div className="w-full flex flex-col items-center justify-center gap-2 text-emerald-300">
+                        <Package size={48} />
+                        <span className="text-xs font-semibold">No photo</span>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="p-4 flex flex-col gap-3 flex-1">
                     {/* Name with the price beside it (like Broiler / Layer) */}
@@ -224,10 +282,12 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
                     </div>
                     <div>
                       {[
-                        ['Moisture (Max)', product.moisture],
-                        ['Crude Fiber', product.fiber],
-                        ['Calcium (Min)', product.calcium],
-                        ['Phosphorus (Min)', product.phosphorus],
+                        ['Moisture (Max)', nutrient(db?.moisture_max_pct, product.moisture)],
+                        ['Crude Fiber', nutrient(db?.crude_fiber_pct, product.fiber)],
+                        ['Crude Fat', nutrient(db?.crude_fat_pct, product.fat)],
+                        ['Calcium (Min)', nutrient(db?.calcium_pct, product.calcium)],
+                        ['Phosphorus (Min)', nutrient(db?.phosphorus_pct, product.phosphorus)],
+                        ['TDN', nutrient(db?.tdn_pct, product.tdn)],
                       ].map(([label, value]) => (
                         <div
                           key={label}
@@ -275,16 +335,47 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
             })}
             {/* Database feeds with no product card — shown as their own
                 cards, so the old top table loses nothing. */}
-            {visibleDbOnly.map((feed) => (
+            {visibleDbOnly.map((feed) => {
+              // Bag + sample photos from the database row (no static
+              // fallback for these feeds).
+              const bagImage = hasFeedImage(feed.bag_image_url)
+                ? feed.bag_image_url
+                : undefined;
+              const sampleImage = hasFeedImage(feed.sample_image_url)
+                ? feed.sample_image_url
+                : undefined;
+              return (
               <article
                 key={feed.id || feed.name}
                 className="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden flex flex-col"
               >
-                <div className="bg-emerald-50/70 flex items-center justify-center h-44 p-3">
-                  <div className="flex flex-col items-center gap-2 text-emerald-300">
-                    <Package size={48} />
-                    <span className="text-xs font-semibold">No photo</span>
-                  </div>
+                <div className="bg-emerald-50/70 flex h-44">
+                  {bagImage ? (
+                    <div className={`flex items-center justify-center p-3 ${sampleImage ? 'flex-1 border-r border-emerald-100' : 'w-full'}`}>
+                      <img
+                        src={bagImage}
+                        alt={`${feed.name} bag`}
+                        className="max-h-full max-w-full object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
+                  {sampleImage ? (
+                    <div className={`flex items-center justify-center p-3 ${bagImage ? 'flex-1' : 'w-full'}`}>
+                      <img
+                        src={sampleImage}
+                        alt={`${feed.name} feed`}
+                        className="max-h-full max-w-full object-contain rounded-lg"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
+                  {!bagImage && !sampleImage ? (
+                    <div className="w-full flex flex-col items-center justify-center gap-2 text-emerald-300">
+                      <Package size={48} />
+                      <span className="text-xs font-semibold">No photo</span>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="p-4 flex flex-col gap-3 flex-1">
                   {/* Name with the price beside it (like Broiler / Layer) */}
@@ -310,9 +401,28 @@ export default function NourishFeedPage({ onBack }: NourishFeedPageProps) {
                       <div className="text-sm font-bold text-emerald-900">{feed.me != null ? feed.me : '-'}</div>
                     </div>
                   </div>
+                  <div>
+                    {[
+                      ['Moisture (Max)', feed.moisture_max_pct ? pct(feed.moisture_max_pct) : '-'],
+                      ['Crude Fiber', feed.crude_fiber_pct ? pct(feed.crude_fiber_pct) : '-'],
+                      ['Crude Fat', feed.crude_fat_pct ? pct(feed.crude_fat_pct) : '-'],
+                      ['Calcium (Min)', feed.calcium_pct ? pct(feed.calcium_pct) : '-'],
+                      ['Phosphorus (Min)', feed.phosphorus_pct ? pct(feed.phosphorus_pct) : '-'],
+                      ['TDN', feed.tdn_pct ? pct(feed.tdn_pct) : '-'],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="flex items-baseline justify-between gap-2 py-1 border-b border-emerald-50 last:border-0"
+                      >
+                        <span className="text-[11px] text-slate-500">{label}</span>
+                        <span className="text-xs font-semibold text-slate-700">{value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
         {loading && feeds.length === 0 && (

@@ -49,10 +49,10 @@ export default function CalculatorFattening({ onSaveAndNext, initialData }: Calc
   const fetchFatteningFeeds = async () => {
     setLoadingFeeds(true);
     await loadCachedFirst<FeedOption[]>(
-      'nourish_feeds:fattening',
+      'cattle_feeds:fattening',
       async () => {
         const { data, error } = await supabase
-          .from('nourish_feeds')
+          .from('cattle_feeds')
           .select('id, name')
           .ilike('category', 'fattening');
         if (error) {

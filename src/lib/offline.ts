@@ -169,9 +169,9 @@ export async function loadCachedFirst<T>(
 // before the user opens the page. One failed table never stops the others.
 // ---------------------------------------------------------------------------
 export const REFERENCE_KEYS = [
-  'nourish_feeds:all',
-  'nourish_feeds:dairy',
-  'nourish_feeds:fattening',
+  'cattle_feeds:all',
+  'cattle_feeds:dairy',
+  'cattle_feeds:fattening',
   'other_ingredients:all',
   'other_ingredients:concentrate-fodder',
   'dm_references:all',
@@ -184,23 +184,25 @@ export const REFERENCE_KEYS = [
   'layer_vaccinations:all',
   'broiler_feeds:all',
   'layer_feeds:all',
+  'floating_fish_feeds:all',
+  'sinking_fish_feeds:all',
   'allowed_emails:all',
 ] as const;
 
 async function fetchReference(key: string): Promise<unknown> {
   switch (key) {
-    case 'nourish_feeds:all': {
-      const { data, error } = await supabase.from('nourish_feeds').select('*').order('id', { ascending: true });
+    case 'cattle_feeds:all': {
+      const { data, error } = await supabase.from('cattle_feeds').select('*').order('id', { ascending: true });
       if (error) throw error;
       return data || [];
     }
-    case 'nourish_feeds:dairy': {
-      const { data, error } = await supabase.from('nourish_feeds').select('*').ilike('category', 'dairy');
+    case 'cattle_feeds:dairy': {
+      const { data, error } = await supabase.from('cattle_feeds').select('*').ilike('category', 'dairy');
       if (error) throw error;
       return data || [];
     }
-    case 'nourish_feeds:fattening': {
-      const { data, error } = await supabase.from('nourish_feeds').select('*').ilike('category', 'fattening');
+    case 'cattle_feeds:fattening': {
+      const { data, error } = await supabase.from('cattle_feeds').select('*').ilike('category', 'fattening');
       if (error) throw error;
       return data || [];
     }
@@ -264,6 +266,16 @@ async function fetchReference(key: string): Promise<unknown> {
     }
     case 'layer_feeds:all': {
       const { data, error } = await supabase.from('layer_feeds').select('*').order('id', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+    case 'floating_fish_feeds:all': {
+      const { data, error } = await supabase.from('floating_fish_feeds').select('*').order('id', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+    case 'sinking_fish_feeds:all': {
+      const { data, error } = await supabase.from('sinking_fish_feeds').select('*').order('id', { ascending: true });
       if (error) throw error;
       return data || [];
     }

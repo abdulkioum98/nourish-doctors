@@ -163,7 +163,7 @@ export const SONALI_FEEDS: SonaliFeed[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Cattle products (finished feeds — separate from the nourish_feeds
+// Cattle products (finished feeds — separate from the cattle_feeds
 // ingredients the calculator uses). Nutritional facts + bag photo, from
 // the product file.
 // ---------------------------------------------------------------------------

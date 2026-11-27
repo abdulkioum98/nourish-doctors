@@ -52,6 +52,7 @@ import SonaliVaccination from './pages/poultry/Sonali/SonaliVaccination';
 // Folder-based imports (Fish)
 import NourishFloatingFishFeeds from './pages/fish/NourishFloatingFishFeeds';
 import NourishSinkingFishFeeds from './pages/fish/NourishSinkingFishFeeds';
+import AquaGuidePage from './pages/fish/AquaGuidePage';
 
 import AdminPage from './pages/admin/AdminPage';
 import { Loader2 } from 'lucide-react';
@@ -108,6 +109,11 @@ export type PageType =
   // --- Fish Section ---
   | 'nourish-floating-fish'
   | 'nourish-sinking-fish'
+  | 'aqua-feeding-rate'
+  | 'aqua-stocking-density'
+  | 'aqua-water-quality'
+  | 'aqua-nursery-feeding'
+  | 'aqua-pond-prep'
 
   // --- References & Admin ---
   | 'price-list'
@@ -147,6 +153,7 @@ export default function App() {
     vaccination: false,
     feeds: false,
     fish: false,
+    'aqua-guide': false,
   });
 
   const [dairyData, setDairyData] = useState<CowData | null>(null);
@@ -664,11 +671,32 @@ export default function App() {
 
         {/* --- FISH PAGES --- */}
         {currentPage === 'nourish-floating-fish' && (
-          <NourishFloatingFishFeeds />
+          <NourishFloatingFishFeeds onBack={handleGoHome} />
         )}
 
         {currentPage === 'nourish-sinking-fish' && (
-          <NourishSinkingFishFeeds />
+          <NourishSinkingFishFeeds onBack={handleGoHome} />
+        )}
+
+        {/* --- AQUA GUIDE PAGES --- */}
+        {currentPage === 'aqua-feeding-rate' && (
+          <AquaGuidePage topic="feeding-rate" onBack={handleGoHome} />
+        )}
+
+        {currentPage === 'aqua-stocking-density' && (
+          <AquaGuidePage topic="stocking-density" onBack={handleGoHome} />
+        )}
+
+        {currentPage === 'aqua-water-quality' && (
+          <AquaGuidePage topic="water-quality" onBack={handleGoHome} />
+        )}
+
+        {currentPage === 'aqua-nursery-feeding' && (
+          <AquaGuidePage topic="nursery-feeding" onBack={handleGoHome} />
+        )}
+
+        {currentPage === 'aqua-pond-prep' && (
+          <AquaGuidePage topic="pond-prep" onBack={handleGoHome} />
         )}
 
         {currentPage === 'weight-guide' && (

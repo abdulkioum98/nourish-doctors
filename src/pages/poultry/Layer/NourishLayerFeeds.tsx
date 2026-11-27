@@ -3,6 +3,7 @@ import { supabase } from '../../../supabaseClient';
 import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, Package, Search } from 'lucide-react';
 import { layerImageFor } from '../../../lib/feedDetails';
+import { hasFeedImage } from '../../../lib/feedImage';
 
 interface LayerFeedData {
   id: number;
@@ -18,6 +19,8 @@ interface LayerFeedData {
   feed_form?: string;
   bird_age_or_stage?: string;
   price?: number;
+  bag_image_url?: string;
+  sample_image_url?: string;
 }
 
 export default function LayerFeed() {
@@ -145,27 +148,50 @@ export default function LayerFeed() {
         loading ? null : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredFeeds.map((row) => {
-              const image = layerImageFor(row.feed_name);
+              // Bag + sample photos: the admin-uploaded image wins when
+              // present, else the static photo from the product file.
+              const bagImage = hasFeedImage(row.bag_image_url)
+                ? row.bag_image_url
+                : layerImageFor(row.feed_name);
+              const sampleImage = hasFeedImage(row.sample_image_url)
+                ? row.sample_image_url
+                : undefined;
               return (
                 <article
                   key={row.id}
                   className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden flex flex-col"
                 >
-                  {/* Bag photo (or a placeholder when the file has none) */}
-                  <div className="bg-amber-50/70 flex items-center justify-center h-52 p-3">
-                    {image ? (
-                      <img
-                        src={image}
-                        alt={row.feed_name}
-                        className="max-h-full max-w-full object-contain"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-amber-300">
+                  {/* Bag photo beside the sample (loose feed) photo, so
+                      both are seen together. When a photo is missing the
+                      other one takes the full width; when both are
+                      missing a placeholder shows. */}
+                  <div className="bg-amber-50/70 flex h-52">
+                    {bagImage ? (
+                      <div className={`flex items-center justify-center p-3 ${sampleImage ? 'flex-1 border-r border-amber-100' : 'w-full'}`}>
+                        <img
+                          src={bagImage}
+                          alt={`${row.feed_name} bag`}
+                          className="max-h-full max-w-full object-contain"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
+                    {sampleImage ? (
+                      <div className={`flex items-center justify-center p-3 ${bagImage ? 'flex-1' : 'w-full'}`}>
+                        <img
+                          src={sampleImage}
+                          alt={`${row.feed_name} feed`}
+                          className="max-h-full max-w-full object-contain rounded-lg"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
+                    {!bagImage && !sampleImage ? (
+                      <div className="w-full flex flex-col items-center justify-center gap-2 text-amber-300">
                         <Package size={56} />
                         <span className="text-xs font-semibold">No photo</span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="p-4 flex flex-col gap-3 flex-1">

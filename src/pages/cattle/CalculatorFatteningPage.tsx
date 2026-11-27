@@ -111,10 +111,10 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
     await Promise.all([
       // 1. Fetch Nourish Feeds (Fattening Category)
       loadCachedFirst<any[]>(
-        'nourish_feeds:fattening',
+        'cattle_feeds:fattening',
         async () => {
           const { data, error } = await supabase
-            .from('nourish_feeds')
+            .from('cattle_feeds')
             .select('id, name, price, category, dm, cp, me')
             .ilike('category', 'fattening');
           if (error) {

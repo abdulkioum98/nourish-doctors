@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { loadCachedFirst, isOnline } from '../../lib/offline';
+import { resizeImageFile, hasFeedImage } from '../../lib/feedImage';
 import { 
   Lock, LogOut, Plus, Edit3, Trash2, Save, X, Loader2, 
-  Wheat, FlaskConical, BookOpen, RefreshCw, ArrowLeft, Dna, Table2, KeyRound
+  Wheat, FlaskConical, BookOpen, RefreshCw, ArrowLeft, Dna, Table2, KeyRound, ImagePlus
 } from 'lucide-react';
 
 interface AdminPageProps {
@@ -14,7 +15,7 @@ interface AdminPageProps {
 // Generic table editor: the standards, vaccination and commercial-feed
 // tables all have the same shape (a list + an add/edit form + delete),
 // so they share one editor driven by this config instead of six copies
-// of the same form/table code. The four original tabs (Nourish Feeds,
+// of the same form/table code. The four original tabs (Cattle Feed,
 // Other Ingredients, DM Ratio, Breeds) keep their hand-written forms.
 // Column names come from the pages that read these tables, so the form
 // fields match exactly what the calculators and standard pages display.
@@ -22,7 +23,7 @@ interface AdminPageProps {
 // and Sonali Vaccination reads broiler_vaccinations, so editing the
 // broiler tables covers Sonali too.
 // ---------------------------------------------------------------------------
-type GenericFieldType = 'text' | 'number' | 'select';
+type GenericFieldType = 'text' | 'number' | 'select' | 'image';
 
 interface GenericField {
   key: string;
@@ -30,7 +31,9 @@ interface GenericField {
   type: GenericFieldType;
   required?: boolean;
   step?: string;
-  options?: string[];
+  // Plain strings render as-is; { value, label } pairs store the value
+  // but show the label (e.g. coating 'oil' shows as "Oil Coated").
+  options?: Array<string | { value: string; label: string }>;
   // 'layerBreeds' fills a datalist with the breeds already in the table,
   // so a typo cannot silently create a breed nobody can select.
   datalist?: 'layerBreeds';
@@ -122,6 +125,8 @@ const GENERIC_TABLES: GenericTableDef[] = [
       { key: 'feed_form', label: 'Feed Form', type: 'text' },
       { key: 'bird_age_or_stage', label: 'Bird Age / Stage', type: 'text' },
       { key: 'price', label: 'Price (TK)', type: 'number' },
+      { key: 'bag_image_url', label: 'Bag Photo', type: 'image' },
+      { key: 'sample_image_url', label: 'Sample Photo', type: 'image' },
     ],
   },
   {
@@ -143,6 +148,71 @@ const GENERIC_TABLES: GenericTableDef[] = [
       { key: 'feed_form', label: 'Feed Form', type: 'text' },
       { key: 'bird_age_or_stage', label: 'Bird Age / Stage', type: 'text' },
       { key: 'price', label: 'Price (TK)', type: 'number' },
+      { key: 'bag_image_url', label: 'Bag Photo', type: 'image' },
+      { key: 'sample_image_url', label: 'Sample Photo', type: 'image' },
+    ],
+  },
+  {
+    key: 'floating_fish_feeds',
+    label: 'Floating Fish Feeds',
+    table: 'floating_fish_feeds',
+    cacheKey: 'floating_fish_feeds:all',
+    orderBy: { column: 'id', ascending: true },
+    fields: [
+      { key: 'feed_name', label: 'Feed Name', type: 'text', required: true },
+      { key: 'species', label: 'Species', type: 'text' },
+      { key: 'category', label: 'Category', type: 'select', options: [
+        { value: 'Common', label: 'Common' },
+        { value: 'Pangas', label: 'Pangas' },
+        { value: 'Tilapia', label: 'Tilapia' },
+        { value: 'Koi', label: 'Koi' },
+        { value: 'Carp', label: 'Carp' },
+        { value: 'Catfish', label: 'Catfish' },
+      ] },
+      { key: 'coating', label: 'Coating', type: 'select', options: [
+        { value: 'oil', label: 'Oil Coated' },
+        { value: 'non', label: 'Non Coated' },
+        { value: 'semi', label: 'Semi Coated' },
+        { value: 'catfish', label: 'Catfish' },
+      ] },
+      { key: 'moisture_max_pct', label: 'Moisture Max (%)', type: 'number' },
+      { key: 'protein_min_pct', label: 'Protein Min (%)', type: 'number' },
+      { key: 'fat_min_pct', label: 'Fat Min (%)', type: 'number' },
+      { key: 'fiber_max_pct', label: 'Fiber Max (%)', type: 'number' },
+      { key: 'feed_size', label: 'Feed Size', type: 'text' },
+      { key: 'bag_size_kg', label: 'Bag Size (kg)', type: 'number' },
+      { key: 'price', label: 'Price (TK)', type: 'number' },
+      { key: 'bag_image_url', label: 'Bag Photo', type: 'image' },
+      { key: 'sample_image_url', label: 'Sample Photo', type: 'image' },
+    ],
+  },
+  {
+    key: 'sinking_fish_feeds',
+    label: 'Sinking Fish Feeds',
+    table: 'sinking_fish_feeds',
+    cacheKey: 'sinking_fish_feeds:all',
+    orderBy: { column: 'id', ascending: true },
+    fields: [
+      { key: 'feed_name', label: 'Feed Name', type: 'text', required: true },
+      { key: 'species', label: 'Species', type: 'text' },
+      { key: 'category', label: 'Category', type: 'select', options: [
+        { value: 'Common', label: 'Common' },
+        { value: 'Pangas', label: 'Pangas' },
+        { value: 'Tilapia', label: 'Tilapia' },
+        { value: 'Catfish', label: 'Catfish' },
+        { value: 'Carp', label: 'Carp' },
+        { value: 'Golda', label: 'Golda' },
+        { value: 'Bagda', label: 'Bagda' },
+      ] },
+      { key: 'moisture_max_pct', label: 'Moisture Max (%)', type: 'number' },
+      { key: 'protein_min_pct', label: 'Protein Min (%)', type: 'number' },
+      { key: 'fat_min_pct', label: 'Fat Min (%)', type: 'number' },
+      { key: 'fiber_max_pct', label: 'Fiber Max (%)', type: 'number' },
+      { key: 'feed_size', label: 'Feed Size', type: 'text' },
+      { key: 'bag_size_kg', label: 'Bag Size (kg)', type: 'number' },
+      { key: 'price', label: 'Price (TK)', type: 'number' },
+      { key: 'bag_image_url', label: 'Bag Photo', type: 'image' },
+      { key: 'sample_image_url', label: 'Sample Photo', type: 'image' },
     ],
   },
 ];
@@ -157,7 +227,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [authenticating, setAuthenticating] = useState(false);
 
   // Active Tab State — the four original tabs plus the six generic ones
-  const [activeTab, setActiveTab] = useState<string>('nourish');
+  const [activeTab, setActiveTab] = useState<string>('cattle');
 
   // Form Visibility State
   const [showForm, setShowForm] = useState(false);
@@ -167,7 +237,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [submitting, setSubmitting] = useState(false);
 
   // Data States
-  const [nourishFeeds, setNourishFeeds] = useState<any[]>([]);
+  const [cattleFeeds, setCattleFeeds] = useState<any[]>([]);
   const [otherIngredients, setOtherIngredients] = useState<any[]>([]);
   const [dmReferences, setDmReferences] = useState<any[]>([]);
   const [breeds, setBreeds] = useState<any[]>([]);
@@ -183,6 +253,20 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [me, setMe] = useState('');
   const [category, setCategory] = useState<'dairy' | 'fattening'>('dairy');
   const [feedType, setFeedType] = useState<'concentrate' | 'fodder'>('concentrate');
+  // Cattle feed photos — two per item (bag + sample). Each is a small
+  // resized JPEG data URL (see feedImage.ts), stored in the row's
+  // bag_image_url / sample_image_url columns.
+  const [cattleBagImage, setCattleBagImage] = useState('');
+  const [cattleSampleImage, setCattleSampleImage] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  // Cattle feed nutrients (from the product table) — text, so ranges
+  // like "65-70" fit. Stored without "%"; the page adds it on display.
+  const [nutMoisture, setNutMoisture] = useState('');
+  const [nutFiber, setNutFiber] = useState('');
+  const [nutFat, setNutFat] = useState('');
+  const [nutCalcium, setNutCalcium] = useState('');
+  const [nutPhosphorus, setNutPhosphorus] = useState('');
+  const [nutTdn, setNutTdn] = useState('');
 
   // Form Fields - DM Reference
   const [stageName, setStageName] = useState('');
@@ -278,7 +362,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
       if (doneCount === totalTables) setLoading(false);
     };
     await Promise.all([
-      fetchNourishFeeds(markDone),
+      fetchCattleFeeds(markDone),
       fetchOtherIngredients(markDone),
       fetchDmReferences(markDone),
       fetchBreeds(markDone),
@@ -287,18 +371,18 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setLoading(false);
   };
 
-  const fetchNourishFeeds = async (onDone?: () => void) => {
+  const fetchCattleFeeds = async (onDone?: () => void) => {
     await loadCachedFirst<any[]>(
-      'nourish_feeds:all',
+      'cattle_feeds:all',
       async () => {
-        const { data, error } = await supabase.from('nourish_feeds').select('*').order('created_at', { ascending: true });
+        const { data, error } = await supabase.from('cattle_feeds').select('*').order('created_at', { ascending: true });
         if (error) {
           console.error('Error fetching nourish feeds:', error);
           return [];
         }
         return data || [];
       },
-      (rows) => setNourishFeeds(rows),
+      (rows) => setCattleFeeds(rows),
       onDone,
     );
   };
@@ -377,6 +461,25 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setGenericForm({});
   };
 
+  // Pick a photo for a feed row: any size is accepted, it is resized to
+  // a small JPEG (max 600px) before it is stored, so the saved value
+  // stays ~40–90 KB and the page loads fast.
+  const handleImageFile = async (
+    file: File | undefined,
+    setValue: (v: string) => void,
+  ) => {
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const small = await resizeImageFile(file);
+      setValue(small);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not use that image.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleGenericSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isOnline()) {
@@ -392,6 +495,9 @@ export default function AdminPage({ onBack }: AdminPageProps) {
       if (f.type === 'number') {
         const n = parseFloat(raw);
         payload[f.key] = Number.isNaN(n) ? null : n;
+      } else if (f.type === 'image') {
+        // A resized JPEG data URL (or empty). Stored as-is, never parsed.
+        payload[f.key] = raw === '' ? null : raw;
       } else {
         payload[f.key] = raw === '' ? null : raw;
       }
@@ -408,15 +514,49 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setSubmitting(false);
   };
 
-  const startGenericEdit = (def: GenericTableDef, row: any) => {
+  const startGenericEdit = async (def: GenericTableDef, row: any) => {
+    // Fetch the fresh row first, so photos already saved always show in
+    // the form — the table may be rendering cached rows from before the
+    // photos were uploaded. Falls back to the table row when offline or
+    // the fetch fails.
+    let fresh = row;
+    if (isOnline()) {
+      const { data } = await supabase.from(def.table).select('*').eq('id', row.id).single();
+      if (data) fresh = data;
+    }
     const values: Record<string, string> = {};
     for (const f of def.fields) {
-      const v = row[f.key];
+      const v = fresh[f.key];
       values[f.key] = v === null || v === undefined ? '' : String(v);
     }
     setGenericForm(values);
-    setGenericEditId(row.id);
+    setGenericEditId(fresh.id);
     setGenericShowForm(true);
+  };
+
+  // Same fresh-fetch for the Cattle Feed (nourish) form.
+  const startCattleFeedEdit = async (feed: any) => {
+    let fresh = feed;
+    if (isOnline()) {
+      const { data } = await supabase.from('cattle_feeds').select('*').eq('id', feed.id).single();
+      if (data) fresh = data;
+    }
+    setEditId(fresh.id);
+    setItemName(fresh.name || '');
+    setCategory(fresh.category || 'dairy');
+    setPrice(fresh.price ?? '');
+    setDm(fresh.dm ?? '');
+    setCp(fresh.cp ?? '');
+    setMe(fresh.me ?? '');
+    setCattleBagImage(fresh.bag_image_url || '');
+    setCattleSampleImage(fresh.sample_image_url || '');
+    setNutMoisture(fresh.moisture_max_pct || '');
+    setNutFiber(fresh.crude_fiber_pct || '');
+    setNutFat(fresh.crude_fat_pct || '');
+    setNutCalcium(fresh.calcium_pct || '');
+    setNutPhosphorus(fresh.phosphorus_pct || '');
+    setNutTdn(fresh.tdn_pct || '');
+    setShowForm(true);
   };
 
   // Change the logged-in admin's own password (no SQL needed).
@@ -475,6 +615,14 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setMe('');
     setCategory('dairy');
     setFeedType('concentrate');
+    setCattleBagImage('');
+    setCattleSampleImage('');
+    setNutMoisture('');
+    setNutFiber('');
+    setNutFat('');
+    setNutCalcium('');
+    setNutPhosphorus('');
+    setNutTdn('');
     setStageName('');
     setTargetGroup('dairy');
     setConcentrateRatio('');
@@ -500,8 +648,8 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     else alert('Failed to delete item: ' + error.message);
   };
 
-  // Submit Handler for Nourish Feeds
-  const handleNourishSubmit = async (e: React.FormEvent) => {
+  // Submit Handler for Cattle Feed
+  const handleCattleFeedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isOnline()) {
       alert('You are offline. Admin changes need internet.');
@@ -514,16 +662,34 @@ export default function AdminPage({ onBack }: AdminPageProps) {
       price: parseFloat(price) || 0,
       dm: parseFloat(dm) || 0,
       cp: parseFloat(cp) || 0,
-      me: parseFloat(me) || 0
+      me: parseFloat(me) || 0,
+      bag_image_url: cattleBagImage === '' ? null : cattleBagImage,
+      sample_image_url: cattleSampleImage === '' ? null : cattleSampleImage,
+      moisture_max_pct: nutMoisture.trim() === '' ? null : nutMoisture.trim(),
+      crude_fiber_pct: nutFiber.trim() === '' ? null : nutFiber.trim(),
+      crude_fat_pct: nutFat.trim() === '' ? null : nutFat.trim(),
+      calcium_pct: nutCalcium.trim() === '' ? null : nutCalcium.trim(),
+      phosphorus_pct: nutPhosphorus.trim() === '' ? null : nutPhosphorus.trim(),
+      tdn_pct: nutTdn.trim() === '' ? null : nutTdn.trim(),
     };
 
     if (editId) {
-      await supabase.from('nourish_feeds').update(payload).eq('id', editId);
+      const { error } = await supabase.from('cattle_feeds').update(payload).eq('id', editId);
+      if (error) {
+        alert(error.message);
+        setSubmitting(false);
+        return;
+      }
     } else {
-      await supabase.from('nourish_feeds').insert([payload]);
+      const { error } = await supabase.from('cattle_feeds').insert([payload]);
+      if (error) {
+        alert(error.message);
+        setSubmitting(false);
+        return;
+      }
     }
     resetForm();
-    fetchNourishFeeds();
+    fetchCattleFeeds();
     setSubmitting(false);
   };
 
@@ -758,14 +924,19 @@ export default function AdminPage({ onBack }: AdminPageProps) {
         </form>
       )}
 
-      {/* Navigation Tabs — one scrollable row for all 10 tables */}
+      {/* Navigation Tabs — one scrollable row for all 10 tables.
+          The five feed tabs sit together first: Cattle, Broiler, Layer, Floating Fish, Sinking Fish. */}
       <div className="flex gap-1.5 p-1 bg-slate-200/80 rounded-xl overflow-x-auto">
         {[
-          { key: 'nourish', label: 'Nourish Feeds', icon: <Wheat size={13} /> },
+          { key: 'cattle', label: 'Cattle Feed', icon: <Wheat size={13} /> },
+          { key: 'broiler_feeds', label: 'Broiler Feeds', icon: <Table2 size={13} /> },
+          { key: 'layer_feeds', label: 'Layer Feeds', icon: <Table2 size={13} /> },
+          { key: 'floating_fish_feeds', label: 'Floating Fish Feeds', icon: <Table2 size={13} /> },
+          { key: 'sinking_fish_feeds', label: 'Sinking Fish Feeds', icon: <Table2 size={13} /> },
           { key: 'other', label: 'Other Feed', icon: <FlaskConical size={13} /> },
           { key: 'dm', label: 'DM Ratio', icon: <BookOpen size={13} /> },
           { key: 'breeds', label: 'Breeds', icon: <Dna size={13} /> },
-          ...GENERIC_TABLES.map((t) => ({ key: t.key, label: t.label, icon: <Table2 size={13} /> })),
+          ...GENERIC_TABLES.filter((t) => t.key !== 'broiler_feeds' && t.key !== 'layer_feeds' && t.key !== 'floating_fish_feeds' && t.key !== 'sinking_fish_feeds').map((t) => ({ key: t.key, label: t.label, icon: <Table2 size={13} /> })),
         ].map((tab) => (
           <button
             key={tab.key}
@@ -790,7 +961,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
           
           <div className="flex justify-between items-center">
             <span className="font-bold text-slate-700 text-xs">
-              {activeTab === 'nourish' && 'Nourish Feeds Table'}
+              {activeTab === 'cattle' && 'Cattle Feed Table'}
               {activeTab === 'other' && 'Other Ingredients Table'}
               {activeTab === 'dm' && 'DM Reference Entries'}
               {activeTab === 'breeds' && 'Cattle Breeds Table'}
@@ -816,12 +987,12 @@ export default function AdminPage({ onBack }: AdminPageProps) {
           </div>
 
           {/* TAB 1: NOURISH FEEDS */}
-          {activeTab === 'nourish' && (
+          {activeTab === 'cattle' && (
             <div className="space-y-4">
               {showForm && (
-                <form onSubmit={handleNourishSubmit} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
+                <form onSubmit={handleCattleFeedSubmit} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center border-b pb-2 font-bold text-emerald-800">
-                    <span>{editId ? 'Edit Nourish Feed' : 'Add New Nourish Feed'}</span>
+                    <span>{editId ? 'Edit Cattle Feed' : 'Add New Cattle Feed'}</span>
                     <button type="button" onClick={resetForm}><X size={14} /></button>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -852,10 +1023,103 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                       <label className="text-[10px] text-slate-500">ME Energy</label>
                       <input type="number" step="0.01" required value={me} onChange={(e) => setMe(e.target.value)} className="w-full border p-1.5 rounded-lg" />
                     </div>
+                    {/* Nutrients (from the product table) — number or a
+                        range like "65-70", without the % sign. */}
+                    <div>
+                      <label className="text-[10px] text-slate-500">Moisture Max (%)</label>
+                      <input type="text" placeholder="e.g. 12" value={nutMoisture} onChange={(e) => setNutMoisture(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500">Crude Fiber (%)</label>
+                      <input type="text" placeholder="e.g. 10" value={nutFiber} onChange={(e) => setNutFiber(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500">Crude Fat (%)</label>
+                      <input type="text" placeholder="e.g. 4" value={nutFat} onChange={(e) => setNutFat(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500">Calcium Min (%)</label>
+                      <input type="text" placeholder="e.g. 1.25" value={nutCalcium} onChange={(e) => setNutCalcium(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500">Phosphorus Min (%)</label>
+                      <input type="text" placeholder="e.g. 0.45" value={nutPhosphorus} onChange={(e) => setNutPhosphorus(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500">TDN (%)</label>
+                      <input type="text" placeholder="e.g. 62" value={nutTdn} onChange={(e) => setNutTdn(e.target.value)} className="w-full border p-1.5 rounded-lg" />
+                    </div>
+                    {/* Two photos per item: bag + sample. Any size is
+                        accepted — each is resized small before saving. */}
+                    <div>
+                      <label className="text-[10px] text-slate-500">Bag Photo</label>
+                      <div className="flex items-center gap-2">
+                        {hasFeedImage(cattleBagImage) ? (
+                          <img src={cattleBagImage} alt="Bag" className="w-12 h-12 rounded-lg object-cover border" />
+                        ) : (
+                          <span className="w-12 h-12 rounded-lg border bg-slate-50 flex items-center justify-center text-slate-300">
+                            <ImagePlus size={18} />
+                          </span>
+                        )}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <label className="text-[11px] font-bold text-emerald-800 cursor-pointer hover:underline">
+                            {uploadingImage ? 'Resizing...' : hasFeedImage(cattleBagImage) ? 'Change photo' : 'Choose photo'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={uploadingImage}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                e.target.value = '';
+                                handleImageFile(file, setCattleBagImage);
+                              }}
+                            />
+                          </label>
+                          {hasFeedImage(cattleBagImage) && (
+                            <button type="button" onClick={() => setCattleBagImage('')} className="text-[11px] text-rose-600 hover:underline text-left">Remove</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500">Sample Photo</label>
+                      <div className="flex items-center gap-2">
+                        {hasFeedImage(cattleSampleImage) ? (
+                          <img src={cattleSampleImage} alt="Sample" className="w-12 h-12 rounded-lg object-cover border" />
+                        ) : (
+                          <span className="w-12 h-12 rounded-lg border bg-slate-50 flex items-center justify-center text-slate-300">
+                            <ImagePlus size={18} />
+                          </span>
+                        )}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <label className="text-[11px] font-bold text-emerald-800 cursor-pointer hover:underline">
+                            {uploadingImage ? 'Resizing...' : hasFeedImage(cattleSampleImage) ? 'Change photo' : 'Choose photo'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={uploadingImage}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                e.target.value = '';
+                                handleImageFile(file, setCattleSampleImage);
+                              }}
+                            />
+                          </label>
+                          {hasFeedImage(cattleSampleImage) && (
+                            <button type="button" onClick={() => setCattleSampleImage('')} className="text-[11px] text-rose-600 hover:underline text-left">Remove</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-span-2 sm:col-span-1 flex items-end">
+                      <span className="text-[10px] text-slate-400 leading-tight">Any size — saved small (max 600px), so the page loads fast.</span>
+                    </div>
                   </div>
-                  <button type="submit" disabled={submitting} className="w-full bg-emerald-800 text-white py-2 rounded-lg font-bold flex justify-center items-center space-x-1">
+                  <button type="submit" disabled={submitting || uploadingImage} className="w-full bg-emerald-800 text-white py-2 rounded-lg font-bold flex justify-center items-center space-x-1">
                     {submitting ? <Loader2 size={14} className="animate-spin" /> : editId ? <Save size={14} /> : <Plus size={14} />}
-                    <span>{editId ? 'Update Nourish Feed' : 'Save Nourish Feed'}</span>
+                    <span>{uploadingImage ? 'Resizing photo...' : editId ? 'Update Cattle Feed' : 'Save Cattle Feed'}</span>
                   </button>
                 </form>
               )}
@@ -870,11 +1134,18 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                       <th className="p-2.5 text-center">DM %</th>
                       <th className="p-2.5 text-center">CP %</th>
                       <th className="p-2.5 text-center">ME</th>
+                      <th className="p-2.5 text-center">Moist. %</th>
+                      <th className="p-2.5 text-center">Fiber %</th>
+                      <th className="p-2.5 text-center">Fat %</th>
+                      <th className="p-2.5 text-center">Ca %</th>
+                      <th className="p-2.5 text-center">P %</th>
+                      <th className="p-2.5 text-center">TDN %</th>
+                      <th className="p-2.5 text-center">Photos</th>
                       <th className="p-2.5 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y text-slate-700">
-                    {nourishFeeds.map((feed) => (
+                    {cattleFeeds.map((feed) => (
                       <tr key={feed.id} className="hover:bg-slate-50">
                         <td className="p-2.5 font-bold">{feed.name}</td>
                         <td className="p-2.5 text-[10px] text-slate-500 capitalize">{feed.category}</td>
@@ -882,18 +1153,29 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                         <td className="p-2.5 text-center">{feed.dm ?? 0}%</td>
                         <td className="p-2.5 text-center">{feed.cp ?? 0}%</td>
                         <td className="p-2.5 text-center">{feed.me ?? 0}</td>
+                        <td className="p-2.5 text-center">{feed.moisture_max_pct ? `${feed.moisture_max_pct}%` : '-'}</td>
+                        <td className="p-2.5 text-center">{feed.crude_fiber_pct ? `${feed.crude_fiber_pct}%` : '-'}</td>
+                        <td className="p-2.5 text-center">{feed.crude_fat_pct ? `${feed.crude_fat_pct}%` : '-'}</td>
+                        <td className="p-2.5 text-center">{feed.calcium_pct ? `${feed.calcium_pct}%` : '-'}</td>
+                        <td className="p-2.5 text-center">{feed.phosphorus_pct ? `${feed.phosphorus_pct}%` : '-'}</td>
+                        <td className="p-2.5 text-center">{feed.tdn_pct ? `${feed.tdn_pct}%` : '-'}</td>
+                        <td className="p-2.5 text-center">
+                          <span className="inline-flex gap-1">
+                            {hasFeedImage(feed.bag_image_url) ? (
+                              <img src={feed.bag_image_url} alt="Bag" className="w-10 h-10 rounded-lg object-cover border inline-block" />
+                            ) : (
+                              <span className="w-10 h-10 rounded-lg border bg-slate-50 inline-flex items-center justify-center text-slate-300 text-[10px]">Bag</span>
+                            )}
+                            {hasFeedImage(feed.sample_image_url) ? (
+                              <img src={feed.sample_image_url} alt="Sample" className="w-10 h-10 rounded-lg object-cover border inline-block" />
+                            ) : (
+                              <span className="w-10 h-10 rounded-lg border bg-slate-50 inline-flex items-center justify-center text-slate-300 text-[10px]">Sample</span>
+                            )}
+                          </span>
+                        </td>
                         <td className="p-2.5 text-center space-x-1">
-                          <button onClick={() => { 
-                            setEditId(feed.id); 
-                            setItemName(feed.name || ''); 
-                            setCategory(feed.category || 'dairy');
-                            setPrice(feed.price ?? ''); 
-                            setDm(feed.dm ?? ''); 
-                            setCp(feed.cp ?? ''); 
-                            setMe(feed.me ?? ''); 
-                            setShowForm(true); 
-                          }} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
-                          <button onClick={() => handleDelete('nourish_feeds', feed.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
+                          <button onClick={() => startCattleFeedEdit(feed)} className="p-1 text-slate-500 hover:text-emerald-700"><Edit3 size={14} /></button>
+                          <button onClick={() => handleDelete('cattle_feeds', feed.id)} className="p-1 text-slate-500 hover:text-rose-700"><Trash2 size={14} /></button>
                         </td>
                       </tr>
                     ))}
@@ -1157,15 +1439,60 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     {activeGenericDef.fields.map((f) => (
                       <div key={f.key}>
                         <label className="text-[10px] text-slate-500">{f.label}</label>
-                        {f.type === 'select' ? (
+                        {f.type === 'image' ? (
+                          <div className="flex items-center gap-2">
+                            {hasFeedImage(genericForm[f.key]) ? (
+                              <img
+                                src={genericForm[f.key]}
+                                alt={f.label}
+                                className="w-12 h-12 rounded-lg object-cover border"
+                              />
+                            ) : (
+                              <span className="w-12 h-12 rounded-lg border bg-slate-50 flex items-center justify-center text-slate-300">
+                                <ImagePlus size={18} />
+                              </span>
+                            )}
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <label className="text-[11px] font-bold text-emerald-800 cursor-pointer hover:underline">
+                                {uploadingImage ? 'Resizing...' : hasFeedImage(genericForm[f.key]) ? 'Change photo' : 'Choose photo'}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={uploadingImage}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    e.target.value = '';
+                                    handleImageFile(file, (v) =>
+                                      setGenericForm((p) => ({ ...p, [f.key]: v })),
+                                    );
+                                  }}
+                                />
+                              </label>
+                              {hasFeedImage(genericForm[f.key]) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setGenericForm((p) => ({ ...p, [f.key]: '' }))}
+                                  className="text-[11px] text-rose-600 hover:underline text-left"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                              <span className="text-[10px] text-slate-400 leading-tight">Any size — saved small (max 600px).</span>
+                            </div>
+                          </div>
+                        ) : f.type === 'select' ? (
                           <select
                             value={genericForm[f.key] ?? ''}
                             onChange={(e) => setGenericForm((p) => ({ ...p, [f.key]: e.target.value }))}
                             className="w-full border p-1.5 rounded-lg bg-white"
                           >
-                            {f.options?.map((o) => (
-                              <option key={o} value={o}>{o === '' ? '-' : o}</option>
-                            ))}
+                            {f.options?.map((o) => {
+                              if (typeof o === 'string') {
+                                return <option key={o} value={o}>{o === '' ? '-' : o}</option>;
+                              }
+                              return <option key={o.value} value={o.value}>{o.label}</option>;
+                            })}
                           </select>
                         ) : (
                           <>
@@ -1191,9 +1518,9 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                       </div>
                     ))}
                   </div>
-                  <button type="submit" disabled={submitting} className="w-full bg-emerald-800 text-white py-2 rounded-lg font-bold flex justify-center items-center space-x-1">
+                  <button type="submit" disabled={submitting || uploadingImage} className="w-full bg-emerald-800 text-white py-2 rounded-lg font-bold flex justify-center items-center space-x-1">
                     {submitting ? <Loader2 size={14} className="animate-spin" /> : genericEditId ? <Save size={14} /> : <Plus size={14} />}
-                    <span>{genericEditId ? `Update ${activeGenericDef.label}` : `Save ${activeGenericDef.label}`}</span>
+                    <span>{uploadingImage ? 'Resizing photo...' : genericEditId ? `Update ${activeGenericDef.label}` : `Save ${activeGenericDef.label}`}</span>
                   </button>
                 </form>
               )}
@@ -1220,7 +1547,17 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                         <tr key={row.id} className="hover:bg-slate-50">
                           {activeGenericDef.fields.map((f, i) => (
                             <td key={f.key} className={`p-2.5 whitespace-nowrap ${i === 0 ? 'font-bold' : 'text-center'}`}>
-                              {row[f.key] === null || row[f.key] === undefined || row[f.key] === '' ? '-' : String(row[f.key])}
+                              {f.type === 'image' ? (
+                                hasFeedImage(row[f.key]) ? (
+                                  <img src={row[f.key]} alt={f.label} className="w-10 h-10 rounded-lg object-cover border inline-block" />
+                                ) : (
+                                  <span className="text-slate-300">-</span>
+                                )
+                              ) : row[f.key] === null || row[f.key] === undefined || row[f.key] === '' ? (
+                                '-'
+                              ) : (
+                                String(row[f.key])
+                              )}
                             </td>
                           ))}
                           <td className="p-2.5 text-center space-x-1 whitespace-nowrap">

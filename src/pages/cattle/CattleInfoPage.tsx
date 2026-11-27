@@ -59,10 +59,10 @@ export default function CattleInfoPage({ onSaveAndNext, initialData }: CattleInf
   const fetchDairyFeeds = async () => {
     setLoadingFeeds(true);
     await loadCachedFirst<FeedOption[]>(
-      'nourish_feeds:dairy',
+      'cattle_feeds:dairy',
       async () => {
         const { data, error } = await supabase
-          .from('nourish_feeds')
+          .from('cattle_feeds')
           .select('id, name')
           .ilike('category', 'dairy');
         if (error) {

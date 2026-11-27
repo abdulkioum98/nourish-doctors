@@ -3,6 +3,7 @@ import { supabase } from '../../../supabaseClient';
 import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
 import { Loader2, Package } from 'lucide-react';
 import { broilerExtraFor } from '../../../lib/feedDetails';
+import { hasFeedImage } from '../../../lib/feedImage';
 
 interface BroilerFeedData {
   id: number;
@@ -18,6 +19,8 @@ interface BroilerFeedData {
   feed_form?: string;
   bird_age_or_stage?: string;
   price?: number;
+  bag_image_url?: string;
+  sample_image_url?: string;
 }
 
 export default function BroilerFeed() {
@@ -126,6 +129,14 @@ export default function BroilerFeed() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {feeds.map((row) => {
               const extra = broilerExtraFor(row.feed_name);
+              // Bag + sample photos: the admin-uploaded image wins when
+              // present, else the static photo from the product file.
+              const bagImage = hasFeedImage(row.bag_image_url)
+                ? row.bag_image_url
+                : extra?.bagImage;
+              const sampleImage = hasFeedImage(row.sample_image_url)
+                ? row.sample_image_url
+                : extra?.feedImage;
               return (
                 <article
                   key={row.id}
@@ -136,27 +147,27 @@ export default function BroilerFeed() {
                       other one takes the full width; when both are
                       missing a placeholder shows. */}
                   <div className="bg-amber-50/70 flex h-52">
-                    {extra?.bagImage ? (
-                      <div className={`flex items-center justify-center p-3 ${extra.feedImage ? 'flex-1 border-r border-amber-100' : 'w-full'}`}>
+                    {bagImage ? (
+                      <div className={`flex items-center justify-center p-3 ${sampleImage ? 'flex-1 border-r border-amber-100' : 'w-full'}`}>
                         <img
-                          src={extra.bagImage}
+                          src={bagImage}
                           alt={`${row.feed_name} bag`}
                           className="max-h-full max-w-full object-contain"
                           loading="lazy"
                         />
                       </div>
                     ) : null}
-                    {extra?.feedImage ? (
-                      <div className={`flex items-center justify-center p-3 ${extra.bagImage ? 'flex-1' : 'w-full'}`}>
+                    {sampleImage ? (
+                      <div className={`flex items-center justify-center p-3 ${bagImage ? 'flex-1' : 'w-full'}`}>
                         <img
-                          src={extra.feedImage}
+                          src={sampleImage}
                           alt={`${row.feed_name} feed`}
                           className="max-h-full max-w-full object-contain rounded-lg"
                           loading="lazy"
                         />
                       </div>
                     ) : null}
-                    {!extra?.bagImage && !extra?.feedImage ? (
+                    {!bagImage && !sampleImage ? (
                       <div className="w-full flex flex-col items-center justify-center gap-2 text-amber-300">
                         <Package size={56} />
                         <span className="text-xs font-semibold">No photo</span>

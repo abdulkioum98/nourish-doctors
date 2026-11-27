@@ -48,6 +48,11 @@ const PAGE_TITLES: Record<string, string> = {
   // Fish
   'nourish-floating-fish': 'Floating Feed',
   'nourish-sinking-fish': 'Sinking Feed',
+  'aqua-feeding-rate': 'Feeding Rate',
+  'aqua-stocking-density': 'Stocking Density',
+  'aqua-water-quality': 'Water Quality',
+  'aqua-nursery-feeding': 'Nursery Feeding',
+  'aqua-pond-prep': 'Pond Prep',
   'fish-feed': 'Aqua Feed',
   // References
   'feed-nutrients': 'Ingredients',

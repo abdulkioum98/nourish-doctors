@@ -22,6 +22,7 @@ interface DashboardProps {
     vaccination: boolean;
     feeds: boolean;
     fish: boolean;
+    'aqua-guide': boolean;
   };
   setActiveDropdowns: React.Dispatch<React.SetStateAction<any>>;
 }
@@ -128,6 +129,14 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
     { id: 'nourish-sinking-fish', title: 'Sinking Fish Feeds' },
   ];
 
+  const aquaGuideSubItems = [
+    { id: 'aqua-feeding-rate', title: 'Feeding Rate' },
+    { id: 'aqua-stocking-density', title: 'Stocking Density' },
+    { id: 'aqua-water-quality', title: 'Water Quality' },
+    { id: 'aqua-nursery-feeding', title: 'Nursery Feeding' },
+    { id: 'aqua-pond-prep', title: 'Pond Preparation' },
+  ];
+
   // One clean 3D card — short again (like the earlier cards) and bleeding
   // PC: a card is a bit wider than half the screen, so its title fits on
   // one line — left cards run from the left edge to past the middle,
@@ -172,7 +181,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
   // open it grows in place and shows its sub-items as plain rows.
   // Same bleed as its section's cards.
   const renderAccordion = (
-    key: 'standards' | 'vaccination' | 'feeds' | 'fish',
+    key: 'standards' | 'vaccination' | 'feeds' | 'fish' | 'aqua-guide',
     title: string,
     icon: React.ReactNode,
     tintKey: TintKey,
@@ -263,6 +272,7 @@ export default function Dashboard({ onSelectPage, activeDropdowns, setActiveDrop
           {sectionHeading('bg-cyan-600', 'Aqua Tools', 'text-cyan-900')}
           <div className="flex flex-col gap-4">
             {renderAccordion('fish', 'Nourish Fish Feeds', <Fish className="text-cyan-700" size={18} />, 'cyan', fishSubItems, 'left')}
+            {renderAccordion('aqua-guide', 'Fish Farming Guide', <Fish className="text-cyan-700" size={18} />, 'cyan', aquaGuideSubItems, 'left')}
           </div>
         </section>
       </div>

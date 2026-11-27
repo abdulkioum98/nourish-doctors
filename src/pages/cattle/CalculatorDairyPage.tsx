@@ -86,12 +86,12 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
       setItemList(combinedList);
     };
     await Promise.all([
-      // 1. Fetch Dairy feeds from nourish_feeds (Always Concentrate)
+      // 1. Fetch Dairy feeds from cattle_feeds (Always Concentrate)
       loadCachedFirst<any[]>(
-        'nourish_feeds:dairy',
+        'cattle_feeds:dairy',
         async () => {
           const { data, error } = await supabase
-            .from('nourish_feeds')
+            .from('cattle_feeds')
             .select('*')
             .ilike('category', 'dairy');
           if (error) {
