@@ -519,13 +519,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
       setNoticeMessage('');
       setNoticeMsg('Notice sent to all users.');
       setNotices((prev) => [inserted, ...prev]);
-      try {
-        await supabase.functions.invoke('send-notice-push', {
-          body: { noticeId: inserted.id, title, message },
-        });
-      } catch (pushErr) {
-        console.error('Notice push (closed apps) failed — in-app notice still sent:', pushErr);
-      }
+      
     } catch (err: any) {
       console.error('Failed to send notice:', err);
       setNoticeMsg('Failed to send notice: ' + (err?.message || 'unknown error'));
