@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification accent colour (emerald-700, the app theme). Android
+         tints the white silhouette small icon with this colour. Used by
+         the FCM default_notification_color meta-data in AndroidManifest. -->
+    <color name="notification_color">#047857</color>
+</resources>

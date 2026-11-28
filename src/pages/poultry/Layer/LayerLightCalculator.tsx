@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calculator, Copy, Check, Printer, RefreshCw } from 'lucide-react';
 import { LayerLightingTab } from '../../../components/sidebars/Poultry/LayerLightingSidebar';
-import { downloadTextAsPdf } from '../../../lib/downloadPdf';
+import { downloadTablePdf } from '../../../lib/downloadPdf';
 
 // Props Interface to solve ts(2322) error
 interface LayerLightCalculatorProps {
@@ -18,6 +18,7 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
 
   // Copy State
   const [copied, setCopied] = useState<boolean>(false);
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
 
   // Numeric Values
   const l = typeof lengthFt === 'number' ? lengthFt : 0;
@@ -40,26 +41,23 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
     setLumenPerBulb("");
   };
 
-  // Printable / Copyable Format
+  // Printable / Copyable Format — clean sections, same as the Dairy
+  // calculator's copy text: a short title, then the inputs, then the result.
   const generateReportText = () => {
-    let text = `=======================================\n`;
-    text += `   POULTRY LIGHTING REQUIREMENT REPORT\n`;
-    text += `=======================================\n\n`;
-    text += `--- SHED DIMENSIONS ---\n`;
+    let text = `NOURISH - Layer Lighting Requirement\n\n`;
+    text += `SHED DIMENSIONS\n`;
     text += `• Length: ${l} ft\n`;
     text += `• Width: ${w} ft\n`;
-    text += `• Total Area (sq ft): ${areaSqFt.toFixed(2)} sq ft\n`;
-    text += `• Total Area (sq m): ${areaSqM.toFixed(2)} m² (formula: ft² / 10.764)\n\n`;
+    text += `• Shed Area: ${areaSqFt.toFixed(2)} sq ft (${areaSqM.toFixed(2)} m²)\n\n`;
 
-    text += `--- LIGHTING REQUIREMENTS ---\n`;
+    text += `LIGHTING REQUIREMENTS\n`;
     text += `• Target Lux: ${lux} Lux\n`;
-    text += `• Total Required Lumens: ${totalLumenReq.toFixed(1)} Lumens (formula: Lux × m²)\n`;
-    text += `• Selected Bulb Capacity: ${lumenBulb} Lumens / Bulb\n\n`;
+    text += `• Total Required Lumens: ${totalLumenReq.toFixed(1)} lm\n`;
+    text += `• Bulb Output: ${lumenBulb} Lumen / Bulb\n\n`;
 
-    text += `--- FINAL RESULT ---\n`;
-    text += `• Required Bulbs (Exact): ${rawBulbs.toFixed(2)} Bulbs\n`;
+    text += `RESULT\n`;
+    text += `• Required Bulbs (Exact): ${rawBulbs.toFixed(2)}\n`;
     text += `• Required Bulbs (Recommended): ${reqBulbs} Bulbs\n`;
-    text += `=======================================\n`;
     return text;
   };
 
@@ -69,12 +67,33 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Short table PDF (same formatting as the Dairy calculator): an info
+  // table, then a real table with the result — not plain text lines.
   const handlePrint = async () => {
-    const ok = await downloadTextAsPdf(
+    setDownloadingPdf(true);
+    const ok = await downloadTablePdf(
       `lighting-report-${new Date().toISOString().slice(0, 10)}.pdf`,
       'Layer Lighting Requirement Report',
-      generateReportText(),
+      [
+        ['Shed Dimensions', `${l} ft x ${w} ft`],
+        ['Target Lux', `${lux} Lux`],
+        ['Bulb Output', `${lumenBulb} Lumen / Bulb`],
+      ],
+      [
+        {
+          title: 'Calculation Result',
+          headers: ['Item', 'Value'],
+          rows: [
+            ['Shed Area', `${areaSqFt.toFixed(2)} sq ft`],
+            ['Shed Area', `${areaSqM.toFixed(2)} m2`],
+            ['Total Required Lumens', `${totalLumenReq.toFixed(1)} lm`],
+            ['Required Bulbs (Exact)', `${rawBulbs.toFixed(2)}`],
+          ],
+          totalRow: ['Required Bulbs (Recommended)', `${reqBulbs} Bulbs`],
+        },
+      ],
     );
+    setDownloadingPdf(false);
     if (!ok) alert('Could not create the PDF. Please try again.');
   };
 
@@ -225,10 +244,11 @@ export default function LayerLightCalculator({ activeTab, setActiveTab }: LayerL
 
             <button
               onClick={handlePrint}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+              disabled={downloadingPdf}
+              className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed"
             >
               <Printer size={14} />
-              <span>Download PDF</span>
+              <span>{downloadingPdf ? 'Preparing PDF...' : 'Download PDF'}</span>
             </button>
           </div>
         </div>

@@ -285,6 +285,12 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
           `${Math.round(qty * item.price_per_kg)}`,
         ];
       });
+    // Group header rows (Concentrate / Fodder) are bold in the PDF.
+    const boldRows: number[] = [];
+    if (selectedConcentrates.length > 0) boldRows.push(0);
+    if (selectedFodders.length > 0) {
+      boldRows.push(selectedConcentrates.length > 0 ? selectedConcentrates.length + 1 : 0);
+    }
     const ok = await downloadTablePdf(
       `dairy-ration-${new Date().toISOString().slice(0, 10)}.pdf`,
       'Ration Formulation Report',
@@ -302,6 +308,7 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
         {
           title: 'Feed Ration Breakdown',
           headers: ['Feed', 'Qty (kg)', 'DM (kg)', 'CP (kg)', 'Energy (MJ)', 'Cost (Tk)'],
+          boldRows,
           rows: [
             ...(selectedConcentrates.length > 0
               ? [['Concentrate', '', '', '', '', ''], ...feedRows(selectedConcentrates)]
@@ -1074,7 +1081,6 @@ export default function CalculatorPage({ cowData, onEditCowInfo }: CalculatorPag
         open={showSuggestModal}
         onClose={() => setShowSuggestModal(false)}
         title="Suggest Ration"
-        subtitle="Pick the ingredients you have available. The suggestion gets as close as possible to this animal's target ratio and DM, CP and Energy requirements."
         targets={{
           dmReq,
           cpReq,

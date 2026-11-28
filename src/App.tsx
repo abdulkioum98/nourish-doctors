@@ -13,6 +13,7 @@ import PoultryUniformitySidebar from './components/sidebars/Poultry/PoultryUnifo
 import EmailLogin from './components/EmailLogin';
 import Dashboard from './pages/dashboard/Dashboard';
 import UserInfoPage from './components/UserInfoPage';
+import NoticePanel from './components/NoticePanel';
 
 // Folder-based imports (Cattle)
 import CattleInfoPage, { CowData } from './pages/cattle/CattleInfoPage';
@@ -61,6 +62,8 @@ import AdminPage from './pages/admin/AdminPage';
 import { Loader2 } from 'lucide-react';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { PushNotifications } from '@capacitor/push-notifications';
 import {
   initOfflineSync,
   syncAllReferenceData,
@@ -71,8 +74,18 @@ import {
   saveOfflineUser,
   getOfflineUser,
   clearOfflineUser,
+  loadCachedFirst,
+  setCached,
+  shouldUseRealtime,
 } from './lib/offline';
-import { buildHomeVisit } from './lib/deviceInfo';
+import { buildHomeVisit, getDeviceId } from './lib/deviceInfo';
+import {
+  fetchNotices,
+  showNoticeNotification,
+  countUnread,
+  markNoticesRead,
+  type Notice,
+} from './lib/notices';
 
 export type CattleData = CowData | FatteningCowData;
 
@@ -164,6 +177,12 @@ export default function App() {
 
   const [dairyData, setDairyData] = useState<CowData | null>(null);
   const [fatteningData, setFatteningData] = useState<FatteningCowData | null>(null);
+
+  // Notices (bell icon on the home page).
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [noticesLoading, setNoticesLoading] = useState(true);
+  const [noticePanelOpen, setNoticePanelOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Helper function to update user online status in database.
   // UPDATE ONLY (refreshUserOnlineStatus): it refreshes the "Logged In"
@@ -291,6 +310,159 @@ export default function App() {
     lastHomeVisitRef.current = { email, at: now };
     sendOrQueueHomeVisit(buildHomeVisit(email));
   }, [currentPage, session]);
+
+  // Notices: fetch (cache-first) + live Realtime for new ones + phone
+  // notification wiring. App open: a new notice arrives over Realtime
+  // and fires a local phone notification. App closed: Firebase (FCM)
+  // delivers it instead, and tapping it opens the Notice panel.
+  const userEmailForNotices = session?.user?.email as string | undefined;
+  useEffect(() => {
+    if (!userEmailForNotices) return;
+    const userEmail = userEmailForNotices;
+
+    // Cache-first fetch so the panel opens instantly, offline too.
+    let cancelled = false;
+    const applyNotices = (rows: Notice[]) => {
+      if (cancelled) return;
+      setNotices(rows);
+      setUnreadCount(countUnread(rows));
+      setNoticesLoading(false);
+    };
+    void loadCachedFirst<Notice[]>(
+      'notices:all',
+      fetchNotices,
+      applyNotices,
+      () => setNoticesLoading(false),
+    );
+
+    // Live: a notice the admin sends arrives here at once.
+    let channel: any = null;
+    if (shouldUseRealtime()) {
+      channel = supabase
+        .channel('public:notices')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notices' },
+          (payload) => {
+            const incoming = payload.new as Notice;
+            setNotices((prev) => {
+              if (prev.some((n) => n.id === incoming.id)) return prev;
+              const next = [incoming, ...prev];
+              void setCached('notices:all', next);
+              setUnreadCount(countUnread(next));
+              return next;
+            });
+            // App is open: put it in the phone's notification panel too.
+            void showNoticeNotification(incoming);
+          },
+        )
+        .subscribe();
+    }
+
+    // Phone notification wiring (native app only).
+    let localListener: any = null;
+    const pushListeners: any[] = [];
+    if (Capacitor.isNativePlatform()) {
+      // Tapping a local notification opens the Notice panel.
+      void LocalNotifications.addListener(
+        'localNotificationActionPerformed',
+        () => {
+          setCurrentPage('home');
+          setPageHistory(['home']);
+          setNoticePanelOpen(true);
+        },
+      ).then((l) => {
+        localListener = l;
+      });
+
+      // Firebase push: register this device's token + handle taps.
+      const setupPush = async () => {
+        try {
+          const perm = await PushNotifications.requestPermissions();
+          if (perm.receive !== 'granted') return;
+          await PushNotifications.register();
+        } catch {
+          return;
+        }
+        pushListeners.push(
+          await PushNotifications.addListener('registration', async ({ value }) => {
+            try {
+              await supabase.from('push_tokens').upsert(
+                {
+                  user_email: userEmail,
+                  device_id: getDeviceId(),
+                  token: value,
+                  platform: Capacitor.getPlatform(),
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'device_id' },
+              );
+            } catch {
+              // Token registration is best-effort; in-app notices still work.
+            }
+          }),
+        );
+        pushListeners.push(
+          await PushNotifications.addListener('registrationError', (err) => {
+            console.error('Push registration failed:', err);
+          }),
+        );
+        // Foreground push: the app is open, so Realtime already delivers
+        // the notice — just refresh the list (dedupe by id) instead of
+        // showing a second notification.
+        pushListeners.push(
+          await PushNotifications.addListener('pushNotificationReceived', () => {
+            void fetchNotices()
+              .then((rows) => {
+                setNotices((prev) => {
+                  const merged = [
+                    ...rows,
+                    ...prev.filter((p) => !rows.some((r) => r.id === p.id)),
+                  ];
+                  void setCached('notices:all', merged);
+                  setUnreadCount(countUnread(merged));
+                  return merged;
+                });
+              })
+              .catch(() => {});
+          }),
+        );
+        // Tapping a Firebase push (app was closed) opens the Notice panel.
+        pushListeners.push(
+          await PushNotifications.addListener('pushNotificationActionPerformed', () => {
+            setCurrentPage('home');
+            setPageHistory(['home']);
+            setNoticePanelOpen(true);
+          }),
+        );
+      };
+      void setupPush();
+    }
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+      if (localListener) void localListener.remove();
+      pushListeners.forEach((l) => {
+        try {
+          void l.remove();
+        } catch {
+          // Ignore cleanup errors.
+        }
+      });
+    };
+    // Only the user's email matters here; re-running on every session
+    // object change would re-subscribe Realtime + push on each refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userEmailForNotices]);
+
+  // Opening the Notice panel marks everything visible as read, so the
+  // bell badge clears.
+  const openNoticePanel = () => {
+    markNoticesRead(notices.map((n) => n.id));
+    setUnreadCount(0);
+    setNoticePanelOpen(true);
+  };
 
   // 2. Browser Navigation Sync
   useEffect(() => {
@@ -547,6 +719,15 @@ export default function App() {
         onOpenSidebar={() => setSidebarOpen(true)}
         onGoHome={handleGoHome}
         onGoBack={handleGoBack}
+        unreadCount={unreadCount}
+        onOpenNotices={openNoticePanel}
+      />
+
+      <NoticePanel
+        open={noticePanelOpen}
+        onClose={() => setNoticePanelOpen(false)}
+        notices={notices}
+        loading={noticesLoading}
       />
 
       {renderSidebar()}

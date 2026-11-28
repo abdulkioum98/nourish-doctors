@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
 import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
-import { Loader2, Award, Search } from 'lucide-react';
+import { Loader2, Award, Search, Download } from 'lucide-react';
+import { downloadTablePdf } from '../../../lib/downloadPdf';
 
 interface BroilerData {
   id: number;
@@ -18,6 +19,34 @@ export default function BroilerStandard() {
   const [searchDay, setSearchDay] = useState<string>('');
 
   const tableName = 'broiler_standards';
+
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
+
+  const handleDownloadPDF = async () => {
+    if (filteredStandards.length === 0) {
+      alert('No data to download.');
+      return;
+    }
+    setDownloadingPdf(true);
+    const ok = await downloadTablePdf(
+      `broiler-standard-${new Date().toISOString().slice(0, 10)}.pdf`,
+      'Broiler Standard',
+      [],
+      [
+        {
+          headers: ['Day', 'Body Weight (gm)', 'Feed Intake (gm)', 'FCR'],
+          rows: filteredStandards.map((row) => [
+            String(row.day ?? ''),
+            String(row.body_weight ?? ''),
+            String(row.feed_intake ?? ''),
+            row.fcr != null ? Number(row.fcr).toFixed(3) : '',
+          ]),
+        },
+      ],
+    );
+    setDownloadingPdf(false);
+    if (!ok) alert('Could not create or open the PDF. If this phone has no PDF viewer app, please install one and try again.');
+  };
 
   useEffect(() => {
     fetchBroilerStandards();
@@ -160,6 +189,18 @@ export default function BroilerStandard() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* DOWNLOAD PDF — at the end of the page */}
+      <div className="pt-3">
+        <button
+          onClick={handleDownloadPDF}
+          disabled={downloadingPdf}
+          className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-400 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:cursor-not-allowed"
+        >
+          <Download size={16} />
+          <span>{downloadingPdf ? 'Preparing PDF...' : 'Download PDF'}</span>
+        </button>
       </div>
     </div>
   );

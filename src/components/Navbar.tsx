@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Home, ArrowLeft } from 'lucide-react';
+import { Menu, Home, ArrowLeft, Bell } from 'lucide-react';
 
 interface NavbarProps {
   onOpenSidebar: () => void;
   onGoHome: () => void;
   onGoBack?: () => void;
   currentPage: string;
+  /** Unread notices — the bell badge. 0 hides the badge. */
+  unreadCount?: number;
+  /** Opens the Notice panel. */
+  onOpenNotices?: () => void;
 }
 
 // Short titles for every page, so the navbar never wraps to a second
@@ -66,7 +70,7 @@ const PAGE_TITLES: Record<string, string> = {
   'user-info': 'My Account',
 };
 
-export default function Navbar({ onOpenSidebar, onGoHome, onGoBack, currentPage }: NavbarProps) {
+export default function Navbar({ onOpenSidebar, onGoHome, onGoBack, currentPage, unreadCount = 0, onOpenNotices }: NavbarProps) {
   const pageTitle = PAGE_TITLES[currentPage] || 'Nourish Doctors';
   const isHomePage = currentPage === 'home' || currentPage === 'dashboard';
   const [offline, setOffline] = useState<boolean>(
@@ -142,8 +146,23 @@ export default function Navbar({ onOpenSidebar, onGoHome, onGoBack, currentPage 
         )}
       </div>
       
-      {/* Right Section: Back Button */}
+      {/* Right Section: bell (home page) / Back Button (other pages) */}
       <div className="flex items-center shrink-0">
+        {isHomePage && onOpenNotices && (
+          <button
+            onClick={onOpenNotices}
+            className="relative p-1.5 hover:bg-emerald-800 rounded-lg transition flex items-center justify-center"
+            title="Notices"
+            aria-label="Notices"
+          >
+            <Bell size={22} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
         {!isHomePage && (
           <button 
             onClick={handleBack} 

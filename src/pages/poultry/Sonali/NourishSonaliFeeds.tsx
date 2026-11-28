@@ -1,11 +1,37 @@
-import React from 'react';
-import { Package } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, Download } from 'lucide-react';
+import { downloadTablePdf } from '../../../lib/downloadPdf';
 import { SONALI_FEEDS } from '../../../lib/feedDetails';
 
 // Sonali feeds — specification and photos from the Nourish product file
 // (no own Supabase table; Sonali Standard / vaccination read the broiler
 // tables, but the feeds are a fixed product list).
 export default function NourishSonaliFeeds() {
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
+
+  const handleDownloadPDF = async () => {
+    setDownloadingPdf(true);
+    const ok = await downloadTablePdf(
+      `sonali-feeds-${new Date().toISOString().slice(0, 10)}.pdf`,
+      'Nourish Sonali Feeds',
+      [],
+      [
+        {
+          headers: ['Feed', 'Protein (%)', 'Energy (kcal/kg)', 'Form', 'Feeding Duration'],
+          rows: SONALI_FEEDS.map((feed) => [
+            String(feed.name ?? ''),
+            feed.cp != null ? `${feed.cp}%` : '-',
+            String(feed.energy ?? '-'),
+            String(feed.form ?? '-'),
+            String(feed.duration ?? '-'),
+          ]),
+        },
+      ],
+    );
+    setDownloadingPdf(false);
+    if (!ok) alert('Could not create or open the PDF. If this phone has no PDF viewer app, please install one and try again.');
+  };
+
   const spec = (label: string, value: string, suffix = '') => (
     <div className="flex items-baseline justify-between gap-2 py-1 border-b border-amber-50 last:border-0">
       <span className="text-[11px] text-slate-500">{label}</span>
@@ -79,6 +105,18 @@ export default function NourishSonaliFeeds() {
             </div>
           </article>
         ))}
+      </div>
+
+      {/* DOWNLOAD PDF — at the end of the page */}
+      <div className="pt-2">
+        <button
+          onClick={handleDownloadPDF}
+          disabled={downloadingPdf}
+          className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-400 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:cursor-not-allowed"
+        >
+          <Download size={16} />
+          <span>{downloadingPdf ? 'Preparing PDF...' : 'Download PDF'}</span>
+        </button>
       </div>
     </div>
   );

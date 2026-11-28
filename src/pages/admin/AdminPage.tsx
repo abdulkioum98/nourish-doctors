@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { loadCachedFirst, isOnline } from '../../lib/offline';
 import { resizeImageFile, hasFeedImage } from '../../lib/feedImage';
+import { fetchNotices, sendNotice, deleteNotice, type Notice } from '../../lib/notices';
 import { 
   Lock, LogOut, Plus, Edit3, Trash2, Save, X, Loader2, 
-  Wheat, FlaskConical, BookOpen, RefreshCw, ArrowLeft, Dna, Table2, KeyRound, ImagePlus
+  Wheat, FlaskConical, BookOpen, RefreshCw, ArrowLeft, Dna, Table2, KeyRound, ImagePlus, Bell
 } from 'lucide-react';
 
 interface AdminPageProps {
@@ -261,6 +262,14 @@ export default function AdminPage({ onBack }: AdminPageProps) {
   const [editMatSaving, setEditMatSaving] = useState(false);
   const [editMatError, setEditMatError] = useState('');
 
+  // Notices (Admin Notice tab) — custom tab, not generic.
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [noticesLoading, setNoticesLoading] = useState(false);
+  const [noticeTitle, setNoticeTitle] = useState('');
+  const [noticeMessage, setNoticeMessage] = useState('');
+  const [noticeSending, setNoticeSending] = useState(false);
+  const [noticeMsg, setNoticeMsg] = useState('');
+
   // Editing ID Tracker
   const [editId, setEditId] = useState<string | number | null>(null);
 
@@ -473,8 +482,75 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     setMaterialsLoading(false);
   };
 
+  // --- Notices (Admin Notice tab) ---
+  const fetchAdminNotices = async () => {
+    setNoticesLoading(true);
+    try {
+      setNotices(await fetchNotices());
+    } catch (err) {
+      console.error('Failed to fetch notices:', err);
+      setNotices([]);
+    } finally {
+      setNoticesLoading(false);
+    }
+  };
+
+  // Send a notice: the row lands in `notices`, every open app hears it
+  // at once over Realtime (bell + local phone notification). The push
+  // to closed apps goes through the send-notice-push Edge Function —
+  // best-effort here, so a missing / failing function never blocks the
+  // notice itself (it still shows in-app for everyone).
+  const handleSendNotice = async () => {
+    if (!isOnline()) {
+      setNoticeMsg('You are offline. Sending a notice needs internet.');
+      return;
+    }
+    const title = noticeTitle.trim();
+    const message = noticeMessage.trim();
+    if (!title || !message) {
+      setNoticeMsg('Write a title and a message first.');
+      return;
+    }
+    setNoticeSending(true);
+    setNoticeMsg('');
+    try {
+      const inserted = await sendNotice(title, message, adminUsername || 'Admin');
+      setNoticeTitle('');
+      setNoticeMessage('');
+      setNoticeMsg('Notice sent to all users.');
+      setNotices((prev) => [inserted, ...prev]);
+      try {
+        await supabase.functions.invoke('send-notice-push', {
+          body: { noticeId: inserted.id, title, message },
+        });
+      } catch (pushErr) {
+        console.error('Notice push (closed apps) failed — in-app notice still sent:', pushErr);
+      }
+    } catch (err: any) {
+      console.error('Failed to send notice:', err);
+      setNoticeMsg('Failed to send notice: ' + (err?.message || 'unknown error'));
+    } finally {
+      setNoticeSending(false);
+    }
+  };
+
+  const handleDeleteNotice = async (id: number) => {
+    if (!isOnline()) {
+      alert('You are offline. Admin changes need internet.');
+      return;
+    }
+    if (!window.confirm('Delete this notice for all users?')) return;
+    try {
+      await deleteNotice(id);
+      setNotices((prev) => prev.filter((n) => n.id !== id));
+    } catch (err: any) {
+      alert('Failed to delete notice: ' + (err?.message || 'unknown error'));
+    }
+  };
+
   useEffect(() => {
     if (isLoggedIn && activeTab === 'materials') fetchMaterials();
+    if (isLoggedIn && activeTab === 'notice') fetchAdminNotices();
   }, [activeTab]);
 
   // Generic table fetch / submit, shared by the six new tabs.
@@ -1026,6 +1102,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     : activeTab === 'other' ? otherIngredients.length
     : activeTab === 'dm' ? dmReferences.length
     : activeTab === 'materials' ? materials.length
+    : activeTab === 'notice' ? notices.length
     : breeds.length;
   const activeVisibleCount = activeGenericDef
     ? genericRowsVisible.length
@@ -1033,6 +1110,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
     : activeTab === 'other' ? otherRows.length
     : activeTab === 'dm' ? dmRows.length
     : activeTab === 'materials' ? materials.length
+    : activeTab === 'notice' ? notices.length
     : breedRows.length;
   const countLabel = searchTerm.trim() === ''
     ? `${activeTotalCount} items`
@@ -1196,6 +1274,7 @@ export default function AdminPage({ onBack }: AdminPageProps) {
           { key: 'breeds', label: 'Breeds', icon: <Dna size={13} /> },
           ...GENERIC_TABLES.filter((t) => t.key !== 'broiler_feeds' && t.key !== 'layer_feeds' && t.key !== 'floating_fish_feeds' && t.key !== 'sinking_fish_feeds').map((t) => ({ key: t.key, label: t.label, icon: <Table2 size={13} /> })),
           { key: 'materials', label: 'Materials', icon: <BookOpen size={13} /> },
+          { key: 'notice', label: 'Notice', icon: <Bell size={13} /> },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -1225,13 +1304,14 @@ export default function AdminPage({ onBack }: AdminPageProps) {
               {activeTab === 'dm' && 'DM Reference Entries'}
               {activeTab === 'breeds' && 'Cattle Breeds Table'}
               {activeTab === 'materials' && 'Training Materials'}
+              {activeTab === 'notice' && 'Notices'}
               {activeGenericDef && `${activeGenericDef.label} Table`}
             </span>
             <span className="text-[11px] text-slate-400 font-medium">{countLabel}</span>
             <span className="flex-1" />
-            {/* The Materials tab has its own upload card + list, so the
+            {/* The Materials and Notice tabs have their own cards, so the
                 generic search box and Add New button are hidden there. */}
-            {activeTab !== 'materials' && (
+            {activeTab !== 'materials' && activeTab !== 'notice' && (
               <>
                 <input
                   type="text"
@@ -2111,6 +2191,84 @@ export default function AdminPage({ onBack }: AdminPageProps) {
                     Cancel
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* NOTICE TAB: send a notice to all users */}
+          {activeTab === 'notice' && (
+            <div className="space-y-4">
+              {/* Compose card */}
+              <div className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3 shadow-sm">
+                <div className="font-bold text-emerald-800 border-b pb-2">Send Notice</div>
+                <div>
+                  <label className="text-[10px] text-slate-500">Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. New feed price from tomorrow"
+                    value={noticeTitle}
+                    onChange={(e) => setNoticeTitle(e.target.value)}
+                    className="w-full border p-1.5 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500">Message</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Write the notice here..."
+                    value={noticeMessage}
+                    onChange={(e) => setNoticeMessage(e.target.value)}
+                    className="w-full border p-1.5 rounded-lg resize-y"
+                  />
+                </div>
+                {noticeMsg && (
+                  <p className={`text-xs font-semibold ${noticeMsg.startsWith('Notice sent') ? 'text-emerald-700' : 'text-rose-600'}`}>
+                    {noticeMsg}
+                  </p>
+                )}
+                <div>
+                  <button
+                    onClick={handleSendNotice}
+                    disabled={noticeSending}
+                    className="flex items-center gap-1.5 bg-emerald-800 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-900 transition disabled:opacity-60"
+                  >
+                    {noticeSending ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
+                    <span>{noticeSending ? 'Sending...' : 'Send to All Users'}</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-snug">
+                  The notice appears at once in every user's app (bell icon on the home page) and as a phone notification. Users whose app is closed get it through Firebase push once the push setup is done.
+                </p>
+              </div>
+
+              {/* Sent notices */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3 shadow-sm">
+                <div className="font-bold text-slate-700 border-b pb-2">Sent Notices</div>
+                {noticesLoading ? (
+                  <div className="p-6 text-center text-slate-400 font-medium animate-pulse">Loading notices...</div>
+                ) : notices.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 font-medium">No notices sent yet.</div>
+                ) : (
+                  notices.map((n) => (
+                    <div key={n.id} className="border border-slate-200 rounded-lg p-3 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-bold text-slate-800 text-sm leading-snug min-w-0">{n.title}</div>
+                        <button
+                          onClick={() => handleDeleteNotice(n.id)}
+                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition shrink-0"
+                          title="Delete this notice"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <div className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{n.message}</div>
+                      <div className="text-[11px] text-slate-400 font-medium">
+                        {n.created_at ? new Date(n.created_at).toLocaleString() : ''}
+                        {n.created_by ? ` • ${n.created_by}` : ''}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

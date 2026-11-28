@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Calculator, Copy, Check, Printer, RefreshCw, Award, Scale } from 'lucide-react';
-import { downloadTextAsPdf } from '../../lib/downloadPdf';
+import { downloadTablePdf } from '../../lib/downloadPdf';
 
 export default function PoultryUniformityCalculator() {
   // Input States
   const [weightsInput, setWeightsInput] = useState<string>('');
   const [unit, setUnit] = useState<'g' | 'kg'>('g'); // Default unit set to Gram
   const [copied, setCopied] = useState<boolean>(false);
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
 
   // Function to handle Unit Toggle and convert existing input text
   const handleUnitChange = (newUnit: 'g' | 'kg') => {
@@ -78,26 +79,24 @@ export default function PoultryUniformityCalculator() {
     setWeightsInput('');
   };
 
-  // Generate Report Text
+  // Generate Report Text — clean sections, same as the Dairy
+  // calculator's copy text: a short title, then the sample, then the result.
   const generateReportText = () => {
-    let text = `=======================================\n`;
-    text += `    POULTRY FLOCK UNIFORMITY REPORT\n`;
-    text += `=======================================\n\n`;
+    let text = `NOURISH - Poultry Flock Uniformity\n\n`;
 
-    text += `--- SAMPLE DATA ---\n`;
+    text += `SAMPLE DATA\n`;
     text += `• Total Birds Weighed: ${totalBirds}\n`;
     text += `• Total Weight: ${totalWeight.toFixed(unit === 'g' ? 1 : 3)} ${unit} (${totalWeightKg.toFixed(3)} kg)\n`;
     text += `• Average Body Weight: ${avgWeight.toFixed(unit === 'g' ? 1 : 3)} ${unit} (${avgWeightKg.toFixed(3)} kg)\n\n`;
 
-    text += `--- ±10% RANGE CALCULATION ---\n`;
+    text += `+/-10% RANGE\n`;
     text += `• Lower Limit (-10%): ${minWeight.toFixed(unit === 'g' ? 1 : 3)} ${unit}\n`;
     text += `• Upper Limit (+10%): ${maxWeight.toFixed(unit === 'g' ? 1 : 3)} ${unit}\n`;
     text += `• Birds within Range: ${birdsInRange} / ${totalBirds}\n\n`;
 
-    text += `--- RESULT ---\n`;
+    text += `RESULT\n`;
     text += `• Uniformity: ${uniformityPct.toFixed(1)}%\n`;
     text += `• Rating: ${status.label}\n`;
-    text += `=======================================\n`;
     return text;
   };
 
@@ -108,13 +107,41 @@ export default function PoultryUniformityCalculator() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Short table PDF (same formatting as the Dairy calculator): an info
+  // table, then real tables with the result — not plain text lines.
   const handlePrint = async () => {
     if (totalBirds === 0) return;
-    const ok = await downloadTextAsPdf(
+    setDownloadingPdf(true);
+    const dec = unit === 'g' ? 1 : 3;
+    const ok = await downloadTablePdf(
       `uniformity-report-${new Date().toISOString().slice(0, 10)}.pdf`,
       'Poultry Flock Uniformity Report',
-      generateReportText(),
+      [
+        ['Unit', unit === 'g' ? 'Gram (g)' : 'Kilogram (kg)'],
+        ['Total Birds Weighed', `${totalBirds}`],
+      ],
+      [
+        {
+          title: 'Sample Summary',
+          headers: ['Item', 'Value'],
+          rows: [
+            ['Total Weight', `${totalWeight.toFixed(dec)} ${unit} (${totalWeightKg.toFixed(3)} kg)`],
+            ['Average Body Weight', `${avgWeight.toFixed(dec)} ${unit} (${avgWeightKg.toFixed(3)} kg)`],
+          ],
+        },
+        {
+          title: 'Uniformity Result',
+          headers: ['Item', 'Value'],
+          rows: [
+            ['Lower Limit (-10%)', `${minWeight.toFixed(dec)} ${unit}`],
+            ['Upper Limit (+10%)', `${maxWeight.toFixed(dec)} ${unit}`],
+            ['Birds within Range', `${birdsInRange} / ${totalBirds}`],
+          ],
+          totalRow: ['Flock Uniformity', `${uniformityPct.toFixed(1)}% (${status.label})`],
+        },
+      ],
     );
+    setDownloadingPdf(false);
     if (!ok) alert('Could not create the PDF. Please try again.');
   };
 
@@ -254,11 +281,11 @@ export default function PoultryUniformityCalculator() {
 
             <button
               onClick={handlePrint}
-              disabled={totalBirds === 0}
+              disabled={totalBirds === 0 || downloadingPdf}
               className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed"
             >
               <Printer size={14} />
-              <span>Download PDF</span>
+              <span>{downloadingPdf ? 'Preparing PDF...' : 'Download PDF'}</span>
             </button>
           </div>
         </div>

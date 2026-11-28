@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { loadCachedFirst } from '../../lib/offline';
-import { Loader2, AlertCircle, Edit3, CheckCircle2, Wand2 } from 'lucide-react';
+import { Loader2, AlertCircle, Edit3, CheckCircle2, Wand2, Download, Copy, X, Check } from 'lucide-react';
+import { downloadTablePdf } from '../../lib/downloadPdf';
 import RationSuggestModal from '../../components/RationSuggestModal';
 import type { SuggestFeedItem } from '../../lib/rationSuggest';
 import { FatteningCowData } from './FatteningInfoPage';
@@ -35,6 +36,11 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
   const [nutrientList, setNutrientList] = useState<FeedNutrientItem[]>([]);
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [showSuggestModal, setShowSuggestModal] = useState<boolean>(false);
+
+  // Modal & Copy State
+  const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
 
   useEffect(() => {
     fetchCalculatorData();
@@ -237,6 +243,122 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
   if (dmDevPct > 0.10) offParameters.push({ name: 'DM', key: 'dm' });
   if (cpDevPct > 0.10) offParameters.push({ name: 'CP', key: 'cp' });
   if (energyDevPct > 0.10) offParameters.push({ name: 'Energy', key: 'energy' });
+
+  // Selected items (qty > 0) — same as the Dairy page.
+  const selectedConcentrates = nutrientConcentrates.filter((item) => getQtyByName(item.name) > 0);
+  const selectedFodders = nutrientFodders.filter((item) => getQtyByName(item.name) > 0);
+
+  const getPricePerKgByName = (name: string): number => {
+    const item = priceList.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+    return item ? item.price_per_kg || 0 : 0;
+  };
+
+  // Short text for "Copy as Text": just the gist — one compact animal
+  // line, then which ingredient how much, then the total cost. Nothing else.
+  const generateShortText = () => {
+    let text = `NOURISH - Ration Formulation\n`;
+    text += `${stageName} Fattening Cattle - ${bodyWeight} kg - ${targetGainPerDay} g/day`;
+    text += `\n\n`;
+
+    if (selectedConcentrates.length > 0) {
+      text += `CONCENTRATE\n`;
+      selectedConcentrates.forEach((item) => {
+        text += `• ${item.name}: ${getQtyByName(item.name)} kg\n`;
+      });
+      text += `\n`;
+    }
+    if (selectedFodders.length > 0) {
+      text += `FODDER\n`;
+      selectedFodders.forEach((item) => {
+        text += `• ${item.name}: ${getQtyByName(item.name)} kg\n`;
+      });
+      text += `\n`;
+    }
+    text += `Total Cost: Tk ${totalCost.toFixed(0)}/day\n`;
+    return text;
+  };
+
+  const handleCopyText = () => {
+    const text = generateShortText();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadPDF = async () => {
+    setDownloadingPdf(true);
+    const info: Array<[string, string]> = [
+      ['Animal Type', 'Fattening Cattle'],
+      ['Stage', stageName],
+      ['Body Weight', `${bodyWeight} kg`],
+      ['Target Gain', `${targetGainPerDay} g/day`],
+    ];
+    if (breedType) info.push(['Breed', breedType]);
+    if (ageMonths) info.push(['Age', `${ageMonths} months`]);
+    if (nourishFeedName) info.push(['Selected Feed', nourishFeedName]);
+    info.push([
+      'Ratio (Conc : Fodder)',
+      `Target ${targetConcentratePct} : ${targetFodderPct}  |  Actual ${actualConcentrateRatioPct} : ${actualFodderRatioPct}`,
+    ]);
+
+    const feedRows = (items: typeof selectedConcentrates) =>
+      items.map((item) => {
+        const qty = getQtyByName(item.name);
+        return [
+          item.name,
+          `${qty}`,
+          getItemDMKg(item).toFixed(2),
+          getItemCPKg(item).toFixed(2),
+          getItemEnergyMJ(item).toFixed(1),
+          `${Math.round(qty * getPricePerKgByName(item.name))}`,
+        ];
+      });
+    // Group header rows (Concentrate / Fodder) are bold in the PDF.
+    const boldRows: number[] = [];
+    if (selectedConcentrates.length > 0) boldRows.push(0);
+    if (selectedFodders.length > 0) {
+      boldRows.push(selectedConcentrates.length > 0 ? selectedConcentrates.length + 1 : 0);
+    }
+    const ok = await downloadTablePdf(
+      `fattening-ration-${new Date().toISOString().slice(0, 10)}.pdf`,
+      'Ration Formulation Report',
+      info,
+      [
+        {
+          title: 'Nutrient Summary',
+          headers: ['Nutrient', 'Required', 'Actual', 'Difference'],
+          rows: [
+            ['DM (kg)', dmReq.toFixed(3), totalActualDM.toFixed(3), dmDiff.toFixed(3)],
+            ['CP (kg)', cpReq.toFixed(3), totalActualCP.toFixed(3), cpDiff.toFixed(3)],
+            ['Energy (MJ)', energyReq.toFixed(1), totalActualEnergy.toFixed(1), energyDiff.toFixed(1)],
+          ],
+        },
+        {
+          title: 'Feed Ration Breakdown',
+          headers: ['Feed', 'Qty (kg)', 'DM (kg)', 'CP (kg)', 'Energy (MJ)', 'Cost (Tk)'],
+          boldRows,
+          rows: [
+            ...(selectedConcentrates.length > 0
+              ? [['Concentrate', '', '', '', '', ''], ...feedRows(selectedConcentrates)]
+              : []),
+            ...(selectedFodders.length > 0
+              ? [['Fodder', '', '', '', '', ''], ...feedRows(selectedFodders)]
+              : []),
+          ],
+          totalRow: [
+            'Total',
+            '',
+            totalActualDM.toFixed(2),
+            totalActualCP.toFixed(2),
+            totalActualEnergy.toFixed(1),
+            `${Math.round(totalCost)}`,
+          ],
+        },
+      ],
+    );
+    setDownloadingPdf(false);
+    if (!ok) alert('Could not create or open the PDF. If this phone has no PDF viewer app, please install one and try again.');
+  };
 
   if (loading) {
     return (
@@ -579,6 +701,26 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
               </tbody>
             </table>
           </div>
+
+          {/* ACTION BUTTONS BELOW RIGHT TABLE */}
+          <div className="flex flex-col gap-2 p-2 pt-1">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={downloadingPdf}
+              className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-400 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:cursor-not-allowed"
+            >
+              <Download size={16} />
+              <span>{downloadingPdf ? 'Preparing PDF...' : 'Download PDF'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowCopyModal(true)}
+              className="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <Copy size={16} />
+              <span>Copy as Text</span>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -815,7 +957,6 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
         open={showSuggestModal}
         onClose={() => setShowSuggestModal(false)}
         title="Suggest Ration"
-        subtitle="Pick the ingredients you have available. The suggestion gets as close as possible to this animal's target ratio and DM, CP and Energy requirements."
         targets={{
           dmReq,
           cpReq,
@@ -831,6 +972,62 @@ export default function CalculatorFatteningPage({ fatteningData, onEditInfo }: C
           setShowSuggestModal(false);
         }}
       />
+
+      {/* POPUP MODAL FOR COPY AS TEXT */}
+      {showCopyModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh]">
+
+            {/* Modal Header */}
+            <div className="bg-slate-800 text-white p-3 sm:p-4 flex justify-between items-center">
+              <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                <Copy size={18} />
+                <span>Formulation Text Preview</span>
+              </h3>
+              <button
+                onClick={() => setShowCopyModal(false)}
+                className="text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto flex-1 bg-slate-50">
+              <pre className="font-mono text-xs sm:text-sm text-slate-800 bg-white p-3.5 rounded-lg border border-slate-200 whitespace-pre-wrap leading-relaxed shadow-inner">
+                {generateShortText()}
+              </pre>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-white border-t border-slate-200 flex justify-end items-center gap-2">
+              <button
+                onClick={() => setShowCopyModal(false)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleCopyText}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-2 shadow-xs transition cursor-pointer"
+              >
+                {copied ? (
+                  <>
+                    <Check size={16} />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} />
+                    <span>Copy to Clipboard</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

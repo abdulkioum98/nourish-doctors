@@ -1,6 +1,6 @@
 import React from 'react';
 import { supabase } from '../../../supabaseClient';
-import { isOnline, queueLogout } from '../../../lib/offline';
+import { isOnline, queueLogout, markDeviceLoggedOut } from '../../../lib/offline';
 import {
   X,
   LogOut,
@@ -40,14 +40,9 @@ export default function PoultryUniformitySidebar({
         return;
       }
 
+      // Only this device's row logs out — another device stays Logged In.
       if (userEmail) {
-        await supabase
-          .from('user_logs')
-          .update({
-            is_logged_in: false,
-            logout_time: new Date().toISOString(),
-          })
-          .eq('user_email', userEmail);
+        await markDeviceLoggedOut(userEmail);
       }
   
       try {

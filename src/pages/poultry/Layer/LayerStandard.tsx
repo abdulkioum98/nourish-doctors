@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
 import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
-import { Loader2, BarChart3, Search } from 'lucide-react';
+import { Loader2, BarChart3, Search, Download } from 'lucide-react';
+import { downloadTablePdf } from '../../../lib/downloadPdf';
 
 interface LayerStandardData {
   id: number;
@@ -23,6 +24,38 @@ export default function LayerStandard() {
   const [searchWeek, setSearchWeek] = useState<string>('');
 
   const tableName = 'layer_standards';
+
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
+
+  const handleDownloadPDF = async () => {
+    if (filteredData.length === 0) {
+      alert('No data to download.');
+      return;
+    }
+    setDownloadingPdf(true);
+    const ok = await downloadTablePdf(
+      `layer-standard-${new Date().toISOString().slice(0, 10)}.pdf`,
+      'Layer Standard',
+      [['Breed', selectedBreed]],
+      [
+        {
+          headers: ['Age (Weeks)', 'Daily Feed (g)', 'Cumulative Feed (g)', 'Body Weight (g)', 'Egg Production (%)', 'Egg Weight (g)'],
+          rows: filteredData.map((row) => [
+            `${row.age_weeks ?? ''} Weeks`,
+            String(row.daily_feed_intake ?? '-'),
+            String(row.cumulative_feed ?? '-'),
+            row.body_weight_max && row.body_weight_min !== row.body_weight_max
+              ? `${row.body_weight_min} - ${row.body_weight_max}`
+              : String(row.body_weight_min ?? '-'),
+            row.egg_production_pct ? `${row.egg_production_pct}%` : '-',
+            row.egg_weight ? `${row.egg_weight}g` : '-',
+          ]),
+        },
+      ],
+    );
+    setDownloadingPdf(false);
+    if (!ok) alert('Could not create or open the PDF. If this phone has no PDF viewer app, please install one and try again.');
+  };
 
   useEffect(() => {
     fetchLayerStandards();
@@ -188,6 +221,18 @@ export default function LayerStandard() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* DOWNLOAD PDF — at the end of the page */}
+      <div className="pt-3">
+        <button
+          onClick={handleDownloadPDF}
+          disabled={downloadingPdf}
+          className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-400 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:cursor-not-allowed"
+        >
+          <Download size={16} />
+          <span>{downloadingPdf ? 'Preparing PDF...' : 'Download PDF'}</span>
+        </button>
       </div>
     </div>
   );

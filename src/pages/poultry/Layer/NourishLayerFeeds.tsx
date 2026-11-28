@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
 import { loadCachedFirst, setCached, shouldUseRealtime } from '../../../lib/offline';
-import { Loader2, Package, Search } from 'lucide-react';
+import { Loader2, Package, Search, Download } from 'lucide-react';
+import { downloadTablePdf } from '../../../lib/downloadPdf';
 import { layerImageFor } from '../../../lib/feedDetails';
 import { hasFeedImage } from '../../../lib/feedImage';
 
@@ -29,6 +30,9 @@ export default function LayerFeed() {
   const [feeds, setFeeds] = useState<LayerFeedData[]>([]);
   const [filteredFeeds, setFilteredFeeds] = useState<LayerFeedData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
+
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   const tableName = 'layer_feeds';
@@ -127,6 +131,36 @@ export default function LayerFeed() {
     if (b.sort_order == null) return -1;
     return a.sort_order - b.sort_order;
   });
+
+  // PDF uses the same on-screen order as the cards (sortedFilteredFeeds).
+  const handleDownloadPDF = async () => {
+    if (sortedFilteredFeeds.length === 0) {
+      alert('No data to download.');
+      return;
+    }
+    setDownloadingPdf(true);
+    const ok = await downloadTablePdf(
+      `layer-feeds-${new Date().toISOString().slice(0, 10)}.pdf`,
+      'Nourish Layer Feeds',
+      [],
+      [
+        {
+          headers: ['Feed', 'Protein (Min %)', 'Price (Tk/kg)', 'Bag Size (kg)', 'Bag Price (Tk)'],
+          rows: sortedFilteredFeeds.map((row) => [
+            String(row.feed_name ?? ''),
+            row.protein_min_pct != null ? `${row.protein_min_pct}%` : '-',
+            row.price != null ? `Tk ${row.price}` : '-',
+            row.bag_size_kg != null ? `${row.bag_size_kg}` : '-',
+            row.price != null && row.bag_size_kg != null
+              ? `Tk ${(Number(row.price) * row.bag_size_kg).toFixed(2)}`
+              : '-',
+          ]),
+        },
+      ],
+    );
+    setDownloadingPdf(false);
+    if (!ok) alert('Could not create or open the PDF. If this phone has no PDF viewer app, please install one and try again.');
+  };
 
   return (
     <div className=" p-4 space-y-6 font-sans">
@@ -268,6 +302,18 @@ export default function LayerFeed() {
           No Feed Data Found
         </div>
       )}
+
+      {/* DOWNLOAD PDF — at the end of the page */}
+      <div className="pt-2">
+        <button
+          onClick={handleDownloadPDF}
+          disabled={downloadingPdf}
+          className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-400 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer disabled:cursor-not-allowed"
+        >
+          <Download size={16} />
+          <span>{downloadingPdf ? 'Preparing PDF...' : 'Download PDF'}</span>
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../supabaseClient';
-import { isOnline, queueLogout, refreshDataNow, getLastDataUpdated, clearOfflineUser } from '../lib/offline';
+import { isOnline, queueLogout, refreshDataNow, getLastDataUpdated, clearOfflineUser, markDeviceLoggedOut } from '../lib/offline';
 import {
   X,
   LogOut,
@@ -110,40 +110,10 @@ export default function Sidebar({
       return;
     }
 
+    // Mark only THIS device's log row as logged out — another device
+    // the user is logged in on keeps its own "Logged In" row.
     if (userEmail) {
-      const { data: activeLogs } = await supabase
-        .from('user_logs')
-        .select('id, login_time')
-        .eq('user_email', userEmail)
-        .eq('is_logged_in', true)
-        .order('login_time', { ascending: false })
-        .limit(1);
-
-      if (activeLogs && activeLogs.length > 0) {
-        const log = activeLogs[0];
-        const loginTime = new Date(log.login_time).getTime();
-        const logoutTime = new Date().getTime();
-        
-        const diffMinutes = Math.floor((logoutTime - loginTime) / (1000 * 60));
-        const finalMinutes = diffMinutes > 0 ? diffMinutes : 1; 
-
-        await supabase
-          .from('user_logs')
-          .update({
-            is_logged_in: false,
-            logout_time: new Date().toISOString(),
-            session_duration_minutes: finalMinutes,
-          })
-          .eq('id', log.id);
-      } else {
-        await supabase
-          .from('user_logs')
-          .update({
-            is_logged_in: false,
-            logout_time: new Date().toISOString(),
-          })
-          .eq('user_email', userEmail);
-      }
+      await markDeviceLoggedOut(userEmail);
     }
 
     // A logout must stick: forget the remembered user, or the next

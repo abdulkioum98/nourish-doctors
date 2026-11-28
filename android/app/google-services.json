@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1007174534289",
+    "project_id": "nourish-doctors",
+    "storage_bucket": "nourish-doctors.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1007174534289:android:84ae42543609023d8bab30",
+        "android_client_info": {
+          "package_name": "com.nourish.doctors"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDegUJeBb-GXGAfMEz_ZOZI3CVKBE2LIhs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

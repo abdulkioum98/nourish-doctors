@@ -33,13 +33,22 @@
 //   python3 assets/make-app-icons-v2.py   (step 5 in that script)
 
 export const NOTIFICATION_SMALL_ICON = 'ic_stat_nourish';
-export const NOTIFICATION_LARGE_ICON = 'ic_launcher';
+// Large icon: the full-colour app logo as a DRAWABLE. The launcher icon
+// (ic_launcher) lives in mipmap-*, and the plugin looks largeIcon up in
+// "drawable" only — so ic_launcher never resolved and no large icon
+// showed. drawable-*/ic_launcher_large.png is a copy of the launcher
+// icon (egg + stethoscope) for notifications.
+export const NOTIFICATION_LARGE_ICON = 'ic_launcher_large';
+// Accent colour for the small icon (emerald-700, the app theme). Android
+// tints the white silhouette with this colour in the notification shade.
+export const NOTIFICATION_ICON_COLOR = '#047857';
 
 /** Options to spread into a LocalNotifications.schedule() notification
- *  (Android only — iOS ignores smallIcon/largeIcon). */
+ *  (Android only — iOS ignores smallIcon/largeIcon/iconColor). */
 export function getAndroidNotificationIcon() {
   return {
     smallIcon: NOTIFICATION_SMALL_ICON,
     largeIcon: NOTIFICATION_LARGE_ICON,
+    iconColor: NOTIFICATION_ICON_COLOR,
   };
 }

@@ -16,6 +16,33 @@ export function getVisitSource(): 'app' | 'browser' {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Stable per-device id (login logs). One id per device, saved in
+// localStorage the first time the app runs on that device — so the phone
+// and the PC get different ids, and the same device keeps its id across
+// reloads. That is how the login log can show ONE row per device when
+// the same user is logged in on several devices, instead of collapsing
+// them into a single row. localStorage persists in the Capacitor WebView
+// too, so the installed app gets a stable id as well.
+// ---------------------------------------------------------------------------
+const DEVICE_ID_KEY = 'nourish-device-id';
+
+export function getDeviceId(): string {
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return 'unknown-device';
+  }
+}
+
 /**
  * The phone / computer model from a user-agent string.
  * Android: the model sits between the Android version and "Build/"

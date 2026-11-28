@@ -8,6 +8,7 @@
 
 import Dexie, { type Table } from 'dexie';
 import { supabase } from '../supabaseClient';
+import { getDeviceId, getDeviceModel } from './deviceInfo';
 
 export const isOnline = (): boolean =>
   typeof navigator === 'undefined' ? true : navigator.onLine;
@@ -321,9 +322,19 @@ export async function syncAllReferenceData(): Promise<void> {
 // with 42P10 ("no unique or exclusion constraint matching the ON
 // CONFLICT specification") — a 400 on every homepage load/reload, and
 // the failed entry stayed queued in the outbox retrying forever.
-// Update the user's active session row first; if there is none,
-// insert a fresh row. A logout + re-login therefore keeps the old
+//
+// ONE ACTIVE ROW PER (USER, DEVICE), not per user: every device carries
+// a stable id (getDeviceId), so the same user logged in on a phone and
+// on a PC gets TWO rows — one per device — instead of the second login
+// overwriting the first. A logout + re-login therefore keeps the old
 // (logged-out) row as history and starts a new one.
+//
+// The match is select-then-update-by-id (one row at a time):
+//   1. this device's active row -> refresh it (a real OTP login, so
+//      login_time = now is correct here),
+//   2. else a legacy row with no device_id (created before this change)
+//      -> claim the latest one for this device,
+//   3. else insert a fresh row (a new device logging in).
 //
 // SERIALIZED per email: app open fires updateUserOnlineStatus several
 // times at once (stored user + real session + auth listener), and
@@ -336,17 +347,52 @@ const upsertQueues = new Map<string, Promise<void>>();
 async function upsertUserLogInner(entry: Record<string, unknown>): Promise<void> {
   const email = String(entry.user_email || '');
   if (!email) return;
-  const { data, error: updateError } = await supabase
+  const deviceId = String(entry.device_id || getDeviceId());
+  const deviceModel = String(
+    entry.device_model ||
+      getDeviceModel(typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+  );
+  const fullEntry = { ...entry, device_id: deviceId, device_model: deviceModel };
+
+  // 1. This device's active row.
+  const { data: ownRows } = await supabase
     .from('user_logs')
-    .update(entry)
+    .select('id')
     .eq('user_email', email)
+    .eq('device_id', deviceId)
     .eq('is_logged_in', true)
-    .select('id');
-  if (updateError) throw updateError;
-  if (data && data.length > 0) return;
+    .limit(1);
+  if (ownRows && ownRows.length > 0) {
+    const { error } = await supabase
+      .from('user_logs')
+      .update(fullEntry)
+      .eq('id', ownRows[0].id);
+    if (error) throw error;
+    return;
+  }
+
+  // 2. Legacy row with no device_id: claim the latest one for this device.
+  const { data: legacyRows } = await supabase
+    .from('user_logs')
+    .select('id')
+    .eq('user_email', email)
+    .is('device_id', null)
+    .eq('is_logged_in', true)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (legacyRows && legacyRows.length > 0) {
+    const { error } = await supabase
+      .from('user_logs')
+      .update(fullEntry)
+      .eq('id', legacyRows[0].id);
+    if (error) throw error;
+    return;
+  }
+
+  // 3. No active row for this device: a new device logging in.
   const { error: insertError } = await supabase
     .from('user_logs')
-    .insert([entry]);
+    .insert([fullEntry]);
   if (insertError) throw insertError;
 }
 
@@ -360,17 +406,24 @@ function upsertUserLog(entry: Record<string, unknown>): Promise<void> {
 }
 
 // Refresh the "Logged In" row on app reopen — UPDATE ONLY, never
-// insert. A row is created only by a real OTP login (EmailLogin).
-// So if the admin deletes a log row, it STAYS deleted: reopening the
-// app only refreshes a row that is still there, it never recreates
-// one. Offline it does nothing (the refresh can wait until online).
+// insert, and only THIS device's row. A row is created only by a real
+// OTP login (EmailLogin). So if the admin deletes a log row, it STAYS
+// deleted: reopening the app only refreshes a row that is still there,
+// it never recreates one. Offline it does nothing (the refresh can
+// wait until online).
+//
+// It deliberately does NOT touch login_time: the login time is when
+// the user logged in, and reopening the app is not a new login —
+// overwriting it on every open made the time jump forward again and
+// again in User Info.
 export async function refreshUserOnlineStatus(email: string): Promise<void> {
   if (!email || !isOnline()) return;
   try {
     await supabase
       .from('user_logs')
-      .update({ is_logged_in: true, login_time: new Date().toISOString() })
+      .update({ is_logged_in: true })
       .eq('user_email', email)
+      .eq('device_id', getDeviceId())
       .eq('is_logged_in', true);
   } catch {
     // Best-effort only; never break a page.
@@ -442,34 +495,68 @@ export async function queueLogout(email: string): Promise<void> {  // A logout m
   }
 }
 
-async function processLogoutEntry(email: string, logoutTime: string): Promise<void> {
-  const { data: activeLogs } = await supabase
-    .from('user_logs')
-    .select('id, login_time')
-    .eq('user_email', email)
-    .eq('is_logged_in', true)
-    .order('login_time', { ascending: false })
-    .limit(1);
+// This device's active log row: its own device_id first, else the
+// latest legacy row with no device_id (created before device tracking).
+// One row at a time, latest first — never another device's row.
+async function pickActiveLog(
+  email: string,
+): Promise<{ id: string; login_time: string } | null> {
+  const deviceId = getDeviceId();
+  const pick = async (matchNull: boolean) => {
+    let q = supabase
+      .from('user_logs')
+      .select('id, login_time')
+      .eq('user_email', email)
+      .eq('is_logged_in', true)
+      .order('login_time', { ascending: false })
+      .limit(1);
+    q = matchNull ? q.is('device_id', null) : q.eq('device_id', deviceId);
+    const { data } = await q;
+    return data && data.length > 0 ? data[0] : null;
+  };
+  return (await pick(false)) || (await pick(true));
+}
 
-  if (activeLogs && activeLogs.length > 0) {
-    const log = activeLogs[0];
+// Mark THIS device's active log row as logged out (shared by every
+// sidebar's logout). Never touches another device's row: logging out
+// on the phone leaves the PC's row "Logged In", and vice versa.
+// Best-effort only; never break logout.
+export async function markDeviceLoggedOut(email: string): Promise<void> {
+  if (!email || !isOnline()) return;
+  try {
+    const log = await pickActiveLog(email);
+    if (!log) return;
+    const logoutTime = new Date();
     const diffMinutes = Math.floor(
-      (new Date(logoutTime).getTime() - new Date(log.login_time).getTime()) / (1000 * 60),
+      (logoutTime.getTime() - new Date(log.login_time).getTime()) / (1000 * 60),
     );
     await supabase
       .from('user_logs')
       .update({
         is_logged_in: false,
-        logout_time: logoutTime,
+        logout_time: logoutTime.toISOString(),
         session_duration_minutes: diffMinutes > 0 ? diffMinutes : 1,
       })
       .eq('id', log.id);
-  } else {
-    await supabase
-      .from('user_logs')
-      .update({ is_logged_in: false, logout_time: logoutTime })
-      .eq('user_email', email);
+  } catch {
+    // Never break logout.
   }
+}
+
+async function processLogoutEntry(email: string, logoutTime: string): Promise<void> {
+  const log = await pickActiveLog(email);
+  if (!log) return;
+  const diffMinutes = Math.floor(
+    (new Date(logoutTime).getTime() - new Date(log.login_time).getTime()) / (1000 * 60),
+  );
+  await supabase
+    .from('user_logs')
+    .update({
+      is_logged_in: false,
+      logout_time: logoutTime,
+      session_duration_minutes: diffMinutes > 0 ? diffMinutes : 1,
+    })
+    .eq('id', log.id);
 }
 
 export async function processOutbox(): Promise<void> {

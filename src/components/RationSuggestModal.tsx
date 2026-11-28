@@ -31,7 +31,6 @@ interface RationSuggestModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
-  subtitle: string;
   targets: RationTargets;
   items: SuggestFeedItem[];
   initialSelectedIds: string[];
@@ -51,7 +50,6 @@ export default function RationSuggestModal({
   open,
   onClose,
   title,
-  subtitle,
   targets,
   items,
   initialSelectedIds,
@@ -201,8 +199,6 @@ export default function RationSuggestModal({
 
         {/* Body */}
         <div className="p-3 sm:p-4 overflow-y-auto flex-1 space-y-4 bg-slate-50">
-          <p className="text-xs sm:text-sm text-slate-600 leading-snug">{subtitle}</p>
-
           {/* Targets */}
           <div className="bg-white rounded-lg border border-slate-200 p-2.5 sm:p-3 text-[11px] sm:text-xs space-y-1">
             <div className="font-bold text-slate-800">Target for this animal</div>
@@ -243,14 +239,6 @@ export default function RationSuggestModal({
                 Select Ingredients
               </button>
             </div>
-            {mode === 'auto' && (
-              <p className="text-[11px] sm:text-xs text-slate-500 leading-snug mt-2">
-                The suggestion is built on the must-use feeds — the Nourish
-                feed for this animal&apos;s milk yield or weight gain, Bhushi
-                Mix, Green Grass and Straw or Silage — plus 1-3 other
-                ingredients, cheapest first, at the correct ratio.
-              </p>
-            )}
           </div>
 
           {/* Available ingredients — multi dropdown (Select Ingredients only) */}
@@ -418,12 +406,6 @@ export default function RationSuggestModal({
                   </tbody>
                 </table>
               </div>
-
-              <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
-                {mode === 'auto'
-                  ? 'Built on the must-use feeds (marked "Must") plus 1-3 other ingredients, cheapest first. The ration never goes below the requirement (DM, CP and Energy) — it sits just above it. Tap Change to see the next combination with different other ingredients. After Apply you can still change any quantity in the table.'
-                  : 'Every ingredient you selected is used, and the ration never goes below the requirement (DM, CP and Energy) — it sits just above it. After Apply you can still change any quantity in the table.'}
-              </p>
             </div>
           )}
         </div>

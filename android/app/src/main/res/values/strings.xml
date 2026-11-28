@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Nourish Doctors</string>
     <string name="title_activity_main">Nourish Doctors</string>
-    <string name="package_name">com.nourish.rationcalculator</string>
-    <string name="custom_url_scheme">com.nourish.rationcalculator</string>
+    <string name="package_name">com.nourish.doctors</string>
+    <string name="custom_url_scheme">com.nourish.doctors</string>
 </resources>

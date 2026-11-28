@@ -25,6 +25,8 @@ interface UserLog {
   session_duration_minutes: number;
   created_at: string;
   device_info?: string;
+  device_id?: string | null;
+  device_model?: string | null;
 }
 
 interface HomeVisit {
@@ -622,7 +624,7 @@ export default function UserInfoPage({ session }: UserInfoPageProps) {
                             <Laptop size={14} className="text-slate-400 shrink-0" />
                             <div>
                               <span className="font-semibold text-slate-700">
-                                {parseDeviceInfo(log.device_info)}
+                                {log.device_model || parseDeviceInfo(log.device_info)}
                               </span>
                               <span className="text-[10px] text-slate-400 ml-2" title={log.device_info}>
                                 ({log.device_info ? log.device_info.substring(0, 45) + '...' : 'Unknown'})

@@ -132,6 +132,9 @@ export interface PdfTable {
   rows: string[][];
   /** A bold closing row (e.g. totals), drawn with a top border. */
   totalRow?: string[];
+  /** Row indexes (into rows) drawn bold with a section-header fill,
+      e.g. the Concentrate / Fodder group rows in a ration table. */
+  boldRows?: number[];
 }
 
 const PAGE_MARGIN = 15;
@@ -250,14 +253,18 @@ function buildTablePdf(
       y += 9;
     }
     const widths = pdfTableColumnWidths(doc, table.headers, table.rows, table.totalRow);
-    const allRows: Array<{ cells: string[]; total: boolean }> = [
-      ...table.rows.map((cells) => ({ cells, total: false })),
-      ...(table.totalRow ? [{ cells: table.totalRow, total: true }] : []),
+    const allRows: Array<{ cells: string[]; total: boolean; bold: boolean }> = [
+      ...table.rows.map((cells, i) => ({
+        cells,
+        total: false,
+        bold: (table.boldRows || []).includes(i),
+      })),
+      ...(table.totalRow ? [{ cells: table.totalRow, total: true, bold: true }] : []),
     ];
     drawHeader(table.headers, widths);
-    allRows.forEach(({ cells, total }, rowIdx) => {
+    allRows.forEach(({ cells, total, bold }, rowIdx) => {
       // Wrap long cells; the row is as tall as its tallest cell.
-      doc.setFont('helvetica', total ? 'bold' : 'normal');
+      doc.setFont('helvetica', total || bold ? 'bold' : 'normal');
       doc.setFontSize(TABLE_FONT);
       const wrapped = cells.map((cell, i) =>
         doc.splitTextToSize(toPdfSafe(cell) || ' ', Math.max(10, widths[i] - 4)),
@@ -275,6 +282,9 @@ function buildTablePdf(
         doc.setDrawColor(16, 122, 87);
         doc.setLineWidth(0.5);
         doc.line(PAGE_MARGIN, y, PAGE_WIDTH - PAGE_MARGIN, y);
+      } else if (bold) {
+        doc.setFillColor(254, 243, 199);
+        doc.rect(PAGE_MARGIN, y, usable, h, 'F');
       } else if (rowIdx % 2 === 1) {
         doc.setFillColor(249, 250, 251);
         doc.rect(PAGE_MARGIN, y, usable, h, 'F');

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { isOnline, sendOrQueueUserLog } from '../lib/offline';
+import { getDeviceId, getDeviceModel } from '../lib/deviceInfo';
 import { Mail, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 
 interface EmailLoginProps {
@@ -91,6 +92,8 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
       const deviceInfo = navigator.userAgent;
 
       // Fire-and-forget: queued in Dexie when offline, never blocks login.
+      // device_id + device_model tag the row to THIS device, so the same
+      // user logged in on several devices gets one row per device.
       await sendOrQueueUserLog({
         user_email: targetEmail,
         otp_status: 'Verified',
@@ -98,6 +101,8 @@ export default function EmailLogin({ onLoginSuccess }: EmailLoginProps) {
         login_time: new Date().toISOString(),
         session_duration_minutes: 0,
         device_info: deviceInfo,
+        device_id: getDeviceId(),
+        device_model: getDeviceModel(deviceInfo),
       });
 
       setLoading(false);
