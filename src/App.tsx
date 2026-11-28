@@ -377,13 +377,10 @@ export default function App() {
 
       // Firebase push: register this device's token + handle taps.
       const setupPush = async () => {
-        try {
-          const perm = await PushNotifications.requestPermissions();
-          if (perm.receive !== 'granted') return;
-          await PushNotifications.register();
-        } catch {
-          return;
-        }
+        // Listeners FIRST, then register() — a cached FCM token can
+        // arrive at once, and an event fired before its listener
+        // exists is lost (that was why closed-app pushes never
+        // arrived: the token was never saved to push_tokens).
         pushListeners.push(
           await PushNotifications.addListener('registration', async ({ value }) => {
             try {
@@ -435,6 +432,13 @@ export default function App() {
             setNoticePanelOpen(true);
           }),
         );
+        try {
+          const perm = await PushNotifications.requestPermissions();
+          if (perm.receive !== 'granted') return;
+          await PushNotifications.register();
+        } catch {
+          return;
+        }
       };
       void setupPush();
     }
